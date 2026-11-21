@@ -1,0 +1,110 @@
+*pi_logipat.txt*	逻辑模式				May 01, 2019
+
+				译者: Willis
+
+Author:  Charles E. Campbell  <NcampObell@SdrPchip.AorgM-NOSPAM>
+Copyright: (c) 2004-2016 by Charles E. Campbell	*logiPat-copyright*
+           The VIM LICENSE applies to LogiPat.vim and LogiPat.txt
+           (see |copyright|) except use "LogiPat" instead of "Vim"
+	   No warranty, express or implied.  Use At-Your-Own-Risk.
+
+==============================================================================
+1. 目录						*logiPat* *logiPat-contents*
+
+	1. 目录.....................: |logiPat-contents|
+	2. LogiPat 手册.............: |logiPat-manual|
+	3. LogiPat 示例.............: |logiPat-examples|
+	4. 注意事项.................: |logiPat-caveat|
+	5. LogiPat 历史.............: |logiPat-history|
+
+
+==============================================================================
+2. LogiPat 手册				*logiPat-manual* *logiPat-man*
+
+	*logiPat-arg* *logiPat-input* *logiPat-pattern* *logiPat-operators*
+	布尔逻辑模式由以下元素构成
+
+			运算符     ! = 非
+			           | = 逻辑或
+			           & = 逻辑与
+			分组       ( ... )
+			模式       "pattern"
+
+	*logiPat-cmd*
+	:LogiPat {布尔逻辑模式}				*:LogiPat*
+		本命令接受布尔逻辑模式参数 (|logiPat-arg|)，并执行搜索。
+
+	:LP {布尔逻辑模式}				*:LP*
+		`:LogiPat` (|logiPat-cmd|) 的简写形式。
+
+	:LPE {布尔逻辑模式}				*:LPE*
+		不执行搜索，仅将布尔逻辑模式参数转换为正则表达式并在屏幕上回
+		显。
+
+	:LogiPatFlags {搜索标志位}			*LogiPat-flags*
+		LogiPat 会使用 |search()| 函数。本命令可用于指定传递给
+		`search()` 调用的标志位。
+
+	:LPF {搜索标志位}				*:LPF*
+		`:LogiPatFlags` 的简写形式。
+
+	:let pat=LogiPat({布尔逻辑模式})		*LogiPat()*
+		直接调用 LogiPat() 函数时，不执行搜索，仅将布尔逻辑模式转换为
+		正则表达式并返回结果。
+
+	要在模式里按本义使用 " 而非用作模式定界符，可将其加倍。
+
+
+==============================================================================
+3. LogiPat 示例						*logiPat-examples*
+
+	LogiPat 接受布尔逻辑模式作为参数，自动生成相应的正则表达式并执行搜索。
+	以下是一组使用示例 (说明中的字符串以冒号 (:) 定界):
+>
+	:LogiPat "abc"
+<		搜索包含字符串 :abc: 的行
+>
+	:LogiPat "ab""cd"
+<		搜索包含字符串 :ab"cd: 的行
+>
+	:LogiPat !"abc"
+<		搜索不包含字符串 :abc: 的行
+>
+	:LogiPat "abc"|"def"
+<		搜索包含字符串 :abc: 或 :def: 的行
+>
+	:LogiPat !("abc"|"def")
+<		搜索既不包含字符串 :abc:、也不包含字符串 :def: 的行
+>
+	:LogiPat "abc"&"def"
+<		搜索同时包含字符串 :abc: 和 :def: 的行
+>
+	:let pat= LogiPat('!"abc"')
+<		返回正则表达式 (但不执行搜索)，用于匹配所有不包含 :abc: 的行。
+		参数中的双引号是必要的，用于区分由其包围的普通匹配文本和布尔逻
+		辑运算符。
+
+
+==============================================================================
+4. 注意事项						*logiPat-caveat*
+
+	 "not" 操作符的可靠性存疑；它与 & (逻辑与) 和 | (逻辑或) 配合使用时，
+	 未必能得到理想结果。建议先测试一下自己编写的模式，必要时可执行
+	 `:set hls` 开启高亮匹配，确认匹配效果符合预期。
+
+
+==============================================================================
+5. LogiPat 历史 (英文)					*logiPat-history*
+
+	v4 Jun 22, 2015 * LogiPat has been picked up by Bram M for standard
+			  plugin distribution; hence the name change
+	v3 Sep 25, 2006 * LP_Or() fixed; it now encapsulates its output
+	                  in \%(...\) parentheses
+	   Dec 12, 2011 * |:LPE| added
+			* "" is mapped to a single " and left inside patterns
+	v2 May 31, 2005	* LPF and LogiPatFlags commands weren't working
+	v1 May 23, 2005	* initial release
+
+
+==============================================================================
+vim:tw=78:ts=8:noet:ft=help

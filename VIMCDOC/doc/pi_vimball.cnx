@@ -1,0 +1,249 @@
+*pi_vimball.txt*	适用于 Vim 9.2 版本。  最近更新: 2026年4月
+
+			      --------------------
+			      Vimball 归档处理程序
+			      --------------------
+				译者: Willis
+
+Author:  Charles E. Campbell  <NcampObell@SdrPchip.AorgM-NOSPAM>
+	  (remove NOSPAM from Campbell's email first)
+Copyright: (c) 2004-2015 by Charles E. Campbell		*Vimball-copyright*
+	The VIM LICENSE (see |copyright|) applies to the files in this
+	package, including vimballPlugin.vim, vimball.vim, and pi_vimball.txt.
+	except use "vimball" instead of "VIM".  Like anything else that's
+	free, vimball.vim and its associated files are provided *as is* and
+	comes with no warranty of any kind, either expressed or implied.  No
+	guarantees of merchantability.  No guarantees of suitability for any
+	purpose.  By using this plugin, you agree that in no event will the
+	copyright holder be liable for any damages resulting from the use of
+	this software. Use at your own risk!
+
+==============================================================================
+1. 目录					*vba* *vimball* *vimball-contents*
+
+	1. 目录..........................................: |vimball-contents|
+	2. Vimball 简介..................................: |vimball-intro|
+	3. Vimball 手册..................................: |vimball-manual|
+	   MkVimball.....................................: |:MkVimball|
+	   UseVimball....................................: |:UseVimball|
+	   RmVimball.....................................: |:RmVimball|
+	4. Vimball 历史..................................: |vimball-history|
+
+
+==============================================================================
+2. Vimball 简介						*vimball-intro*
+
+	Vimball 的设计目标，是让插件使用者的操作更加简便。有了 vimball 以后，
+	用户只需执行: >
+		vim someplugin.vba
+		:so %
+		:q
+<	该插件及其所有部件将自动安装到合适的目录里。注意 用户在执行此命令前，
+	无须刻意先切换到特定目录。此外，插件的帮助文档也会一并被自动安装。
+
+	如果用户安装使用了 AsNeeded 插件 (译者注: 见
+		https://www.vim.org/scripts/script.php?script_id=915
+	)，vimball 会自动适配，将原本应放置到 .vim/plugin/ 目录下的脚本，智能
+	转移到 .vim/AsNeeded/ 目录中去。
+
+	删除 vimball 安装的插件也很方便: >
+		vim
+		:RmVimball someplugin
+<	相比之下，通过 zip 和 tarball 安装的插件，卸载操作就要繁琐不少。
+
+	Vimball 会检视用户的 'runtimepath' 来确定脚本放置的位置。默认使用
+	runtimepath 里首个有效目录。执行 >
+		:echo &rtp
+<	可查看该目录。
+
+
+==============================================================================
+3. Vimball 手册						*vimball-manual*
+
+创 建 VIMBALL							*:MkVimball*
+		:[range]MkVimball[!] filename [path]
+
+	行范围中的文本用于指定需要打包进 vimball 的文件路径，不包含
+	runtimepath ('rtp') 中定义的默认路径前缀。例如: >
+		plugin/something.vim
+		doc/something.txt
+<	对上述范围的行行为 >
+		:[range]MkVimball filename
+<
+	会生成文件 "filename.vba"，Vimball.vim 可通过该文件还原原先的文件。如
+	果文件 "filename.vba" 已存在，本命令会给出警告而不会创建文件。注意所有
+	路径均相对于用户的 .vim (vimfiles) 目录，而所有文件必须存放在该目录
+	下。更准确地说，vimball 插件默认使用 'runtimepath' 里首个有效目录作为
+	路径前缀；不会使用绝对路径，除非用户手动指定 [path]。
+
+	使用感叹号 (!) 形式时，本命令会强制创建 "filename.vba" 文件。如果文件
+	已存在则直接覆盖。此用法和 |:w| 一致。
+
+	感叹号版本也支持在文件名中包含斜杠 (即 `:MkVimball! path/filename`)。
+
+	http://vim.wikia.com/wiki/Using_VimBall_with_%27Make%27 给出一种技巧，
+	提供了用 make 自动生成 vimball 的好方法。
+
+
+控 制 VIMBALL 解 包 目 录				*g:vimball_home*
+
+	变量 g:vimball_home 可覆盖默认的基于 'runtimepath' 的安装目录。
+
+							*vimball-extract*
+		vim filename.vba
+
+	只需简单编辑 Vimball 文件，Vimball.vim 就会提示用户必须执行 (source)
+	该归档内容，才能提取其中文件。
+
+	仅当文件首行是 "Vimball Archiver by Charles E. Campbell" 时，才会被识
+	别为合法的 vimball 文件，并继续解包操作。
+
+列 出 VIMBALL 中 的 文 件				*:VimballList*
+
+		:VimballList
+
+	本命令会列出 Vimball 归档里的所有文件，并显示每个文件的行数。
+
+手 动 解 包 VIMABALL					*:UseVimball*
+
+		:UseVimball [path]
+
+	vimball 文件自身已内置本命令；它会调用 vimball#Vimball() 例程完成对
+	vimball 解包工作。用户如果不想直接执行 vimball 文件，也可手动运行本命
+	令；同时支持指定安装路径，覆盖从 'runtimepath' 里选取首个有效目录的默
+	认路径选择。
+
+删 除 VIMBALL						*:RmVimball*
+
+		:RmVimball vimballfile [path]
+
+	本命令会删除指定 vimball 安装生成的所有文件，但不会删除其创建的目录。
+	用户可指定卸载路径 (见 'runtimepath')；省略时默认使用 'runtimepath' 里
+	首个有效目录。
+	为了实现这一点，该目录下会生成特殊文件 .VimballRecord，用于记录所有已
+	安装 Vimball 的文件信息，以便执行卸载操作。
+
+禁 止 载 入
+
+	如果出于某种原因，不希望使用 vimball 提取插件，可在 <.vimrc> 中定义以
+	下两个变量: >
+
+		let g:loaded_vimballPlugin= 1
+		let g:loaded_vimball      = 1
+<
+WINDDOWS						*vimball-windows*
+
+	许多 vimball 文件会使用 gzip 进行压缩。遗憾的是，Windows 并未自带 gzip
+	解压工具。不过，Windows 用户可以使用多种第三方 gzip 的解压工具:
+>
+	    项目     工具/套件    免费   网站
+	    ----     ----------   ----   -------
+	    7zip        工具       是    http://www.7-zip.org/
+	    Winzip      工具       否    http://www.winzip.com/downwz.htm
+	    unxutils    套件       是    http://unxutils.sourceforge.net/
+	    cygwin      套件       是    http://www.cygwin.com/
+	    GnuWin32    套件       是    http://gnuwin32.sourceforge.net/
+	    MinGW       套件       是    http://www.mingw.org/
+<
+
+==============================================================================
+4. Vimball 历史 (英文)					*vimball-history* {{{1
+
+	unreleased:
+	     Feb 28, 2025 * add support for bzip3 (#16755)
+	     Apr 05, 2026 * Detect path traversal attacks
+	     Apr 09, 2026 * Detect more path traversal attacks
+	     Apr 16, 2026 * Block Windows drive letter paths
+	37 : Jul 18, 2014 * (by request of T. Miedema) added augroup around
+			    the autocmds in vimballPlugin.vim
+	     Jul 06, 2015 * there are two uses of tabc; changed to tabc!
+	34 : Sep 22, 2011 * "UseVimball path" now supports a non-full path by
+			    prepending the current directory to it.
+	33 : Apr 02, 2011 * Gave priority to *.vmb over *.vba
+			  * Changed silent! to sil! (shorter)
+			  * Safed 'swf' setting (during vimball extraction,
+			    its now turned off)
+	32 : May 19, 2010 * (Christian Brabrandt) :so someplugin.vba and
+			    :so someplugin.vba.gz (and the other supported
+			    compression types) now works
+			  * (Jan Steffens) added support for xz compression
+			  * fenc extraction was erroneously picking up the
+			    end of the line number when no file encoding
+			    was present.  Fixed.
+			  * By request, beginning the switchover from the vba
+			    extension to vmb.  Currently both are supported;
+			    MkVimball, however, now will create *.vmb files.
+	     Feb 11, 2011 * motoyakurotsu reported an error with vimball's
+			    handling of zero-length files
+	     Feb 18, 2016 * Changed =~ to =~# where appropriate
+	30 : Dec 08, 2008 * fnameescape() inserted to protect error
+			    messaging using corrupted filenames from
+			    causing problems
+			  * RmVimball supports filenames that would
+			    otherwise be considered to have "magic"
+			    characters (ie. Abc[1].vba)
+	     Feb 18, 2009 * s:Escape(), g:vimball_shq, and g:netrw_shq
+			    removed (shellescape() used directly)
+	     Oct 05, 2009 * (Nikolai Weibull) suggested that MkVimball
+			    be allowed to use slashes in the filename.
+	26 : May 27, 2008 * g:vimball_mkdir usage installed.  Makes the
+	                    $HOME/.vim (or $HOME\vimfiles) directory if
+			    necessary.
+	     May 30, 2008 * (tnx to Bill McCarthy) found and fixed a bug:
+			    vimball wasn't updating plugins to AsNeeded/
+			    when it should
+	25 : Mar 24, 2008 * changed vimball#Vimball() to recognize doc/*.??x
+			    files as help files, too.
+	     Apr 18, 2008 * RmVimball command is now protected by saving and
+	                    restoring settings -- in particular, acd was
+			    causing problems as reported by Zhang Shuhan
+	24 : Nov 15, 2007 * g:vimball_path_escape used by s:Path() to
+	                    prevent certain characters from causing trouble
+			    (defunct: |fnameescape()| and |shellescape()|
+			    now used instead)
+	22 : Mar 21, 2007 * uses setlocal instead of set during BufEnter
+	21 : Nov 27, 2006 * (tnx to Bill McCarthy) vimball had a header
+	                    handling problem and it now changes \s to /s
+	20 : Nov 20, 2006 * substitute() calls have all had the 'e' flag
+	                    removed.
+	18 : Aug 01, 2006 * vimballs now use folding to easily display their
+	                    contents.
+			  * if a user has AsNeeded/somefile, then vimball
+			    will extract plugin/somefile to the AsNeeded/
+			    directory
+	17 : Jun 28, 2006 * changes all \s to /s internally for Windows
+	16 : Jun 15, 2006 * A. Mechelynck's idea to allow users to specify
+			    installation root paths implemented for
+			    UseVimball, MkVimball, and RmVimball.
+			  * RmVimball implemented
+	15 : Jun 13, 2006 * bugfix
+	14 : May 26, 2006 * bugfixes
+	13 : May 01, 2006 * exists("&acd") used to determine if the acd
+			    option exists
+	12 : May 01, 2006 * bugfix - the 'acd' option is not always defined
+	11 : Apr 27, 2006 * VimballList would create missing subdirectories
+			    that the vimball specified were needed.  Fixed.
+	10 : Apr 27, 2006 * moved all setting saving/restoration to a pair of
+			    functions.  Included some more settings in them
+			    which frequently cause trouble.
+	9  : Apr 26, 2006 * various changes to support Windows' prediction
+			    for backslashes and spaces in file and directory
+			    names.
+	7  : Apr 25, 2006 * bypasses foldenable
+			  * uses more exe and less norm! (:yank :put etc)
+			  * does better at insuring a "Press ENTER" prompt
+			    appears to keep its messages visible
+	4  : Mar 31, 2006 * BufReadPost seems to fire twice; BufReadEnter
+			    only fires once, so the "Source this file..."
+			    message is now issued only once.
+	3  : Mar 20, 2006 * removed query, now requires sourcing to be
+			    extracted (:so %).  Message to that effect
+			    included.
+			  * :VimballList  now shows files that would be
+			    extracted.
+	2  : Mar 20, 2006 * query, :UseVimball included
+	1  : Mar 20, 2006 * initial release
+
+
+==============================================================================
+vim:tw=78:ts=8:noet:ft=help:fdm=marker

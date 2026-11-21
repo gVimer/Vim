@@ -1,0 +1,60 @@
+*pi_paren.txt*	适用于 Vim 9.2 版本。  最近更新: 2025年3月
+
+
+		  VIM 参考手册	by Bram Moolenaar
+				译者: Willis
+
+
+高亮匹配括号						*matchparen*
+
+此插件属于系统内置标准插件  |standard-plugin|。
+仅当 'compatible' 选项未置位时，插件才生效。
+
+可通过设置变量 "loaded_matchparen" 来跳过插件的加载: >
+	:let loaded_matchparen = 1
+
+插件会安装 CursorMoved、CursorMovedI 和 WinEnter 自动命令来重新定义匹配高亮。
+
+					*:NoMatchParen* *:DoMatchParen*
+载入插件后，要关闭其效果，用: >
+
+	:NoMatchParen
+
+要再次打开: >
+
+	:DoMatchParen
+
+插件使用的高亮组是 MatchParen。":highlight" 命令可为其指定各种颜色。例如: >
+
+	:hi MatchParen ctermbg=blue guibg=lightblue
+
+插件缺省使用 |hl-MatchParen| 高亮组来高亮显示光标所在的括号还及其匹配括号。这
+可能导致光标在屏幕上短暂消失，因为 MatchParen 的高亮样式会覆盖光标的原有高亮。
+如果不希望如此，只想高亮匹配括号，而不高亮光标所在的括号 (即保持光标原有样式不
+变)，可将 "matchparen_disable_cursor_hl" 变量设置为: >
+
+	:let matchparen_disable_cursor_hl = 1
+
+匹配的字符对由 'matchpairs' 选项定义。修改该选项即可切换需要高亮的匹配对。注意
+并非所有取值都被支持。例如不能高亮单引号或双引号，因为它们的起始和结束字符完全
+相同。
+
+匹配过程会自动识别语法高亮属性。除非光标已在字符串或注释语法项目内部，否则会忽
+略字符串和注释内部的匹配括号。所有名称里包含 "string" 或 "comment" 的语法组均
+被视为字符串或注释。
+
+移动光标时，会限制匹配搜索范围以降低延迟。具体限制如下:
+- 搜索只限窗口可见区域。
+- 仅搜索光标上下各 100 行，避免因已关闭折叠导致的延迟过长。
+- 仅搜索光标前后各两倍于 'synmaxcol' 的字节范围，避免带语法高亮的长行带来的卡
+  顿。
+- 超时限制: 插入模式下是 60 毫秒，其他模式下是 300 毫秒。可通过全局变量
+  `g:matchparen_timeout` 和 `g:matchparen_insert_timeout` 或缓冲区局部变量
+  `b:matchparen_timeout` 和 `b:matchparen_insert_timeout` 自自定义超时时间。
+
+如果想让 |%| 命令使用效果更好，可以安装 matchit 插件，见 |matchit-install|。该
+插件也可用于跳过注释内部的匹配项。该插件与 matchparen 高亮无关，两者使用不同的
+工作机制。
+
+==============================================================================
+ vim:tw=78:ts=8:noet:ft=help:norl:

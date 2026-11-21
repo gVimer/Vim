@@ -1,0 +1,319 @@
+*os_win32.txt*	适用于 Vim 9.2 版本。  最近更新: 2026年10月
+
+
+		  VIM 参考手册	by George Reilly
+				译者: Dasn、tocer
+
+						*win32* *Win32* *MS-Windows*
+本文描述了 Vim 的 Win32 版本的特点。
+
+Vim 的 Win32 版本可在 Windows 7、8、10 和 11 上运行，并提供控制台和 GUI (图形
+界面) 两种版本。
+
+如果使用 Windows XP 或 Vista，可用 Vim 9.0 495 补丁版本或更早的版本。
+
+32 位版本也可在 64 位 MS-Windows 系统上运行。
+
+1. 一些已知的问题		|win32-problems|
+2. 启动				|win32-startup|
+3. 恢复屏幕内容			|win32-restore|
+4. 使用鼠标			|win32-mouse|
+5. 在 Windows 95 下运行		|win32-win95|
+6. 在 Windows 3.1 下运行	|win32-win3.1|
+7. 安装包			|win32-installer|
+8. Win32 常见问题解答 (迷你版)	|win32-faq|
+
+此外，|os_dos.txt| 文档中还提供了 Win32 和 DOS 版本通用的条目:
+文件位置			|dos-locations|
+使用反斜杠			|dos-backslash|
+标准映射			|dos-standard-mappings|
+屏幕的输出与颜色		|dos-colors|
+文件格式			|dos-file-formats|
+:cd 命令			|dos-:cd|
+中止键				|dos-CTRL-Break|
+临时文件			|dos-temp-files|
+默认的外壳选项			|dos-shell|
+PowerShell 缺省			|dos-powershell|
+
+Win32 用户图形界面		|gui-w32|
+
+鸣谢:
+Win32 版本的作者是 George V. Reilly <george@reilly.org>。
+最早用于 Windows NT 版本的移植工作是由 Roger Knobbe <RogerK@wonderware.com> 完
+成的。
+GUI 版本的作者是 George V. Reilly 和 Robert Webb。
+
+有关编译的讨论，请参考 "src/INSTALLpc.txt"。		*win32-compiling*
+
+							*WSL*
+本文不适用于在 WSL (Windows Subsystem for Linux，适用于 Linux 的 Windows 子系
+统) 上运行的 Vim，此时 `has('win32')` 会返回假值。如果需要知道 Vim 是否在 WSL
+上运行，可用 `exists('$WSL_DISTRO_NAME')`。
+
+==============================================================================
+1. 一些已知的问题					*win32-problems*
+
+自动补全文件名时，Vim 会匹配短文件名，但同时会找到并使用相应的长文件名。例如，
+如果长文件名为 "this_is_a_test"，相应的短文件名是 "this_i~1"，则命令 ":e *1"
+会编辑文件 "this_is_a_test"。
+
+==============================================================================
+2. 启动							*win32-startup*
+
+当前目录						*win32-curdir*
+
+如果启动 Vim 时带单个文件名参数，并且指定了文件的完整路径 (也就是以 "x:\" 开头
+的路径)，Vim 会假定该文件是从文件管理器启动的，因此会将当前目录 (:cd 命令查看
+译者) 切换到该文件的所在目录。如果不想这样，只要把路径里的反斜杠 ("\") 换成正
+斜杠 ("/") 即可。例如: >
+
+	vim c:\text\files\foo.txt
+
+会将当前目录切换到 "C:\text\files"。 >
+
+	vim c:/text\files\foo.txt
+
+不会改变当前目录。
+
+
+term 选项						*win32-term*
+
+Vim 的 Win32 版本只识别一种内置终端类型: "win32"。如里将 'term' 设置为其他值，
+Vim 的行为可能会变得异常。因此，Vim 不会从环境变量 "TERM" 里获取 'term' 的值。
+
+终端色彩						*win32-term-colors*
+
+Win32 控制台缺省支持 16 色 |dos-colors|。从 Windows 10 1703 版本 (Creators
+Update) 开始，可以通过置位 'termguicolors' 使控制台支持 256 色以及真彩色
+(24-位)。这需要 Vim 编译时加入 Virtual Terminal Processing (VTP) (虚拟终端处
+理) 支持 |+vtp|。
+
+置位 'termguicolors' 或者 't_Co' 选项设为 256 时，虚拟终端处理被自动启用。这将
+允许 ANSI 转义序列进行颜色显示，改进多字节字符的渲染，并在窗口控制台里启用其他
+终端特性。
+
+实际的色彩渲染效果取决于终端是否实际支持 VTP (Windows 终端或现代 Windows 10/11
+控制台支持)。
+
+$PATH 环境变量						*win32-PATH*
+
+Vim 可执行程序所在路径会被加入环境变量 $PATH 中。这主要是为了让 `!xxd` 能够运
+行，因为它在工具菜单中。同时，这也意味着在一个可执行程序上调用 |executable()|
+返回 1 时，该程序确实能够执行。
+
+命令行参数						*win32-cmdargs*
+
+在 MS-Windows 上，命令行参数的解析并没有统一标准。Vim 和 gvim 过去在处理命令行
+时使用不同的逻辑 (7.4.432 之前)，而且这些逻辑还取决于编译的方式。现在，Vim 和
+gvim 都改为使用 CommandLineToArgvW() Win32 API，从而保证两者的行为一致。
+
+基本规则是:						*win32-backslashes*
+      a) 参数是一串可显示字符组成的序列。
+      b) 参数间以空白分隔。
+      c) 参数可以用双引号包围，以包含空白。
+      d) 一串零到多个反斜杠 (\) 后跟一个双引号 (") 会被特别处理。反斜杠的有效
+	 数目会减半并向下取整。如果原本有偶数个反斜杠，后跟的双引号会反转空格
+	 和制表的可接受性 (即第一个双引号开始引用，而第二个双引号结束引用，在
+	 引用的参数里可以包含空白)，而如果原本有奇数个反斜杠，后跟的双引号会按
+	 本义出现。
+
+因而:
+	"	代表特殊双引号
+	\"	代表按本义出现的双引号
+	\\"	代表一个按本义出现的反引号和一个特殊双引号
+	\\\"	代表一个按本义出现的反引号和一个按本义出现的双引号
+	\\\\"	代表两个按本义出现的反引号和一个特殊双引号
+	\\\\\"	代表两个按本义出现的反引号和一个按本义出现的双引号
+	等等
+
+示例: >
+	vim "C:\My Music\freude" +"set ignorecase" +/"\"foo\\" +\"bar\\\"
+
+会打开 "C:\My Music\freude" 并执行在行模式下的命令: >
+	set ignorecase; /"foo\ and /bar\"
+
+CommandLineToArgvW API 的参考中也有这些规则的描述:
+    https://msdn.microsoft.com/en-us/library/windows/desktop/bb776391.aspx
+
+							*win32-quotes*
+引号还有额外的规则 (这里文档不甚完整)。如上所述，文件名 (或任何其它命令行参数)
+内的引号可以用反斜杠转义。例如 >
+	vim -c "echo 'foo\"bar'"
+
+也可用三个引号来表示一个实际的引号: >
+	vim -c "echo 'foo"""bar'"
+
+引号规则是:
+
+1. `"` 开始引用。
+2. 另一个 `"` 或 `""` 结束引用。如果引用以 `""` 结束，在引用字符串之后生成一个
+   `"`。
+
+示例，[] 包围的是一个生成的实际参数:
+        "foo"           -> [foo]
+        "foo""          -> [foo"]
+        "foo"bar        -> [foobar]
+        "foo" bar       -> [foo], [bar]
+        "foo""bar       -> [foo"bar]
+        "foo"" bar      -> [foo"], [bar]
+        "foo"""bar"     -> [foo"bar]
+
+
+==============================================================================
+3. 恢复屏幕内容						*win32-restore*
+
+打开 'restorescreen' 选项时 (默认设置)，当退出 Vim 或者执行外部命令时，Vim 会
+恢复控制台原来的内容。可用 `:ser nors` 命令关闭此选项。'restorescreen'
+
+==============================================================================
+4. 使用鼠标						*win32-mouse*
+
+Vim 的 Win32 版本提供鼠标支持。如果使用两键鼠标，可以用同时按下左右两键的办法
+来模拟第三键 (中键) - 但是，请注意: 在 Win32 GUI 上，如果右键用来弹出菜单 (参
+见 'mouse')，那么最好先按下鼠标左键 (即在左右两键同时按的时候，左键略快于右键
+译者)。						|mouse-using|
+
+如果鼠标不好用，可以尝试禁用控制台里的 "快速编辑模式" 功能。
+
+==============================================================================
+5. 在 Windows 95 下运行					*win32-win95*
+					*windows95* *windows98* *windowsme*
+在 8.0.0029 补丁中，Windows 95/98/ME 的支持已被删除。如果还想用，请获取该补丁
+之前的版本。
+
+==============================================================================
+6. 在 Windows 3.1 下运行				*win32-win3.1*
+
+				*win32s* *windows-3.1* *gui-w32s* *win16*
+曾经有过一个可在 Windows 3.1 和 3.11 上运行的 gvim 特别版本。在 7.4.1364 补丁
+中，此支持已被删除。
+
+==============================================================================
+7. 安装包						*win32-installer*
+
+http://www.vim.org/download.php 提供了 windows 版本的简易安装程序，而
+https://github.com/vim/vim-win32-installer/releases/ 也会提供每日构建版。
+
+每日构建版同时包含 32 位和 64 位版本，两者都打开了绝大多数特性，通常还附带经过
+加密签名的安装程序，以避免 Windows 的安全警告。
+
+要使用安装程序，可简单执行该 exe 文件。此外，也支持以下开关: >
+
+    gvim_<version>.exe /S           -> 安静安装，无对话框
+    gvim_<version>.exe /D=C:\vim    -> 安装到目录 c:\vim
+                                    -> /D 必须是最后一个参数
+    gvim_<version>.exe /S /D=c:\vim -> 安静安装到 c:\vim
+<
+通过设置 $VIM 环境变量，也可以指定不同于缺省位置的安装目录。
+
+==============================================================================
+8. Win32 常见问题解答 (迷你版)				*win32-faq*
+
+问: 怎样改变字体？
+答: 在 GUI 版本里，可以用 'guifont' 选项。例如: >
+	:set guifont=Lucida_Console:h15:cDEFAULT
+<    在控制台版本里，需要修改控制台窗口的字体，Vim 里不能修改。
+
+问: 在 Windows NT 上怎样输入死键？
+答: NT 3.51 上可以正常输入死键，和在别的程序里的输入方法一样。
+    NT 4.0 上，必须保证缺省区域设置 (控制面板里的键盘设置) 与当前使用的区域设
+    置一致。否则 NT 代码会出现混乱乃至崩溃。这是 NT 4.0 的问题，不是 Vim 的问
+    题。
+
+问: 用 Vim 编辑指向 UNIX NFS 文件服务器上文件的符号链接时，如果试图写入文件，
+    Vim 无法通过链接更新服务器上的文件，而是删除了该链接并创建新文件。为什么？
+答: 在 UNIX 系统上，Vim 可以处理链接 (符号链接或硬链接)。Vim 会先创建一份文件
+    备份，然后覆盖原文件的内容。这样做是为了保证所有属性都和原文件相同。在非
+    UNIX 系统上，原文件先被重命名为备份文件，然后将内容写入新文件。新文件只有
+    权限 (保护位) 会被设置为与原文件相同。但是，这个方法不能处理 NFS 文件系
+    统，那里除了链接还有一些其它问题。当前系统里唯一的解决办法是禁用备份文件，
+    可以通过命令 `:set nobackup nowritebackup` 实现。 'writebackup'
+
+问: 用 Vim 编辑通过 Samba 连接到的 Unix 文件服务器上的文件时。如果试图写入文
+    件，文件所有者被改变了。为什么？
+答: 在保存文件时，Vim 会先给原文件重命名为备份文件 (以防写入过程中失败导致数据
+    丢失)。然后再创建新文件并写入内容。在 Samba 环境下，新创建的文件会被赋予文
+    件系统的默认所有者，这可能会与原文件所有者不同。
+    为避免此问题，可将 'backupcopy' 选项设为 "yes"。此时，Vim 会用复制的方式建
+    立新备份文件，然后覆盖原文件的内容。这样文件所有者就不会改变了。
+
+问: 执行 ":make" 的时候怎样看到输出？
+答: 通常需要一个 tee 程序，它可以把输入 (来自 make 的输出) 同时复制到标准输出
+    和错误文件。可从以下地址获取 tee (以及其他 GNU 工具)。
+    http://gnuwin32.sourceforge.net 或 http://unxutils.sourceforge.net
+    另一个选择是在 http://www.cygwin.com/ 下载 Cygnus 版本的 GNU 工具。
+    获取了 tee 程序之后，需要在 _vimrc 文件中添加以下命令: >
+	:set shellpipe=\|\ tee
+<   这样就可以在写入错误文件的同时，同步看到输出内容。
+
+问: 试图写入文件到运行 VisionFS 的远程计算机时，文件找不到了！
+答: VisionFS 不能处理特定的句号 (.) 加三个字母扩展名的文件名，SCO 声称这是为了
+    兼容 16 位的 DOS/Windows 环境。以下的两个命令可以说明问题:
+>
+	echo Hello > file.bat~
+	dir > file.bat
+<
+    结果是 "dir" 命令的输出会被定向到 "file.bat~" 文件，而非新建名为
+    "file.bat" 的文件。在 Vim 里，这种行为表现为，当编辑名为 "foo.bat" 的文件
+    时，Vim 会自动创建带 '~' 字符的临时文件，即 "foo.bat~"。写入 "foo.bat" 文
+    件时，最后 Vim 反而删除了该文件 (译者注: 因为 Vim 想删除的本来是临时文
+    件)。
+
+    解决办法: 在 _vimrc 文件里加入: >
+	:set backupext=.temporary
+
+问: 怎样改变光标闪烁的频率？
+答: 不能改。这是 NT 控制台的一个限制，据报告，NT 5.0 可以同时为所有控制台更改
+    闪烁频率。
+
+							*:!start*
+问: 如何异步执行外部命令或程序，或用缺省程序打开文档或 URL？
+答: 执行外部命令时，可用 ":!start" 代替 ":!"。例如，要运行 notepad: >
+	:!start notepad
+<    要用缺省图像查看器打开 "image.jpg": >
+        :!start image.jpg
+<    要用 Windows Explorer 打开当前文件所在的目录: >
+        :!start %:h
+<    要用缺省的浏览器打开 Vim 主页: >
+        :!start http://www.vim.org/
+<
+    用 "start" 命令不像 ":!" 那样，切换到另一个屏幕、打开新控制台，然后等待程
+    序执行结束；该命令会指示要运行的程序不会对当前编辑的文件有影响。用
+    `:!start` 命令运行的程序不会继承 Vim 打开的文件句柄，也无需在 Vim 关闭前先
+    关闭这些程序。
+    要避免这种特殊照顾，可以用 `:! start`。
+    此命令有两个可选参数 (见下个问答):
+       /min  最小化方式打开窗口
+       /b    不打开控制台窗口
+    一次只能使用一个参数。第二个参数会被当作程序的开始部分。
+						*windows-asynchronously*
+问: 如何避免异步执行的程序打开窗口？
+答: 取决于实际需要，有以下三个方案:
+    1) 用 /min 标志位，以最小化方式运行程序，其他不作改变。此法对控制台和 GUI
+       应用一样有效。
+    2) 用 /b 标志位，运行控制台程序，但不建立控制台窗口 (GUI 应用不受影响)。
+       只能用于无需输入的应用。否则会得到 EOF 错误，因为输入流 (stdin) (stdout
+       和 stderr 也是如此) 会重定向到 \\.\NUL。
+    3) 在 'guioptions' 选项里设置 '!' 标志位 |'go-!'|。这样 Vim 会在 Vim 内部
+       的终端窗口里运行 "start" 命令，而不会打开控制台窗口。
+
+   运行 Exuberant ctags 的控制台应用示例: >
+        :!start /min ctags -R .
+<   程序结束时，会在当前目录看到一个名为 "tags" 的文件。在运行过程中，可以注意
+   到屏幕底部的任务栏上的窗口标题会闪烁。这种现象对执行耗时较长的命令尤为明
+   显。
+   现在删除 "tags" 文件，然后执行: >
+        :!start /b ctags -R .
+<   仍然会产生相同的 "tags" 文件，但这次任务栏不再闪烁。
+   GUI 应用示例: >
+        :!start /min notepad
+        :!start /b notepad
+<   前一个命令以最小化方式运行 notepad，后一个命令以正常方式运行。
+
+						*windows-icon*
+问: 如果不喜欢 Vim 图标，如何改变？
+答: 请自选图标，将它放在 'runtimepath' 下的某个目录中的 bitmaps/vim.ico。例如
+    ~/vimfiles/bitmaps/vim.ico。
+
+
+ vim:tw=78:ts=8:noet:ft=help:norl:

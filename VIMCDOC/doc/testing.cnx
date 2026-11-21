@@ -1,0 +1,640 @@
+*testing.txt*	适用于 Vim 9.2 版本。  最近更新: 2026年7月
+
+
+		  VIM 参考手册    by Bram Moolenaar
+				译者: Willis
+
+
+测试 Vim 和 Vim 脚本				*testing-support*
+
+表达式求值见 |eval.txt|。本文档详述如何使用 Vim 脚本编写测试。既可用于 Vim 自
+身测试，也可用于插件测试。
+
+1. 测试 Vim				|testing|
+2. 测试函数				|test-functions-details|
+3. 断言函数				|assert-functions-details|
+
+==============================================================================
+1. 测试 Vim						*testing*
+
+Vim 在编译完成后，可执行测试，通常使用 "make test"。测试文件位于目录
+"src/testdir"。
+
+在不同时间点，引入了两类测试:
+	test20.in		老风格测试，仅用于精简编译版本
+	test_something.vim	新风格测试
+
+						*new-style-testing*
+新增测试必须使用新风格。测试脚本命名方式为 test_<feature>.vim (<feature> 替换
+为待测功能名)。这类测试脚本使用 |assert_equal()| 等函数，将测试命令和预期结果
+放在一处。
+						*old-style-testing*
+老风格测试仅用于测试不带 |+eval| 特性的 Vim。
+
+更多信息详见 src/testdir/README.txt 文档。
+
+==============================================================================
+2. 测试函数					*test-functions-details*
+
+test_alloc_fail({id}, {countdown}, {repeat})		*test_alloc_fail()*
+		用于测试: 每次调用编号 {id} 的内存分配时，{countdown} 都会减
+		一，计数归零后，内存分配会失败 {repeat} 次。如果 {repeat} 小于
+		一，使用一次失败次数。
+
+		也可用作 |method|: >
+			GetAllocId()->test_alloc_fail()
+<
+		返回类型: 无
+
+
+test_autochdir()					*test_autochdir()*
+		设置标志位，在 Vim 启动完成前启用 'autochdir' 的效果。
+
+		返回类型: 无
+
+
+test_feedinput({string})				*test_feedinput()*
+		将 {string} 中的字符加入输入队列，按照用户手动键入的方式进行处
+		理。此功能使用底层输入缓冲区。
+		{仅当编译时加入 |+unix| 或在 GUI 环境下可用}
+
+		也可用作 |method|: >
+			GetText()->test_feedinput()
+<
+		返回类型: 无
+
+
+test_garbagecollect_now()			 *test_garbagecollect_now()*
+		类似 |garbagecollect()|，但立即执行。只能直接调用，防止内部残
+		留数据结构，调用任何函数前必须先置位 |v:testing|。 *E1142*
+		不能在 |:def| 函数内调用，因为栈变量会被释放。
+
+		返回类型: 无
+
+test_garbagecollect_soon()			 *test_garbagecollect_soon()*
+		设置内部标志位，使垃圾回收器像在主循环中一样被调用。仅用于测
+		试。
+
+		返回类型: 无
+
+test_getvalue({name})					*test_getvalue()*
+		获取内部变量值。目前支持以下 {name} 值:
+			need_fileinfo
+
+		也可用作 |method|: >
+			GetName()->test_getvalue()
+<
+		返回类型: |Number|
+
+						*test_gui_event()*
+test_gui_event({event}, {args})
+		生成带参数 {args} 的 GUI {event}，用于测试 Vim 功能。仅在 GUI
+		运行时可用。
+
+		{event} 为字符串，可选值是:
+		    "dropfiles"	在窗口放置一或多个文件
+		    "findrepl"  搜索和替代文本
+		    "mouse"	鼠标按键点击
+		    "scrollbar" 移动或拖动滚动条
+		    "key"	底层键盘按放事件
+		    "tabline"	鼠标点击选中标签页
+		    "tabmenu"	选中标签栏菜单项
+
+		{args} 为存放事件所需参数的字典。
+
+		"dropfiles":
+		  {仅当编译时加入 |drop_file| 特性才有效}
+		  在指定窗口放置一或多个文件。{args} 可用项为:
+		    files:	文件名列表
+		    row:	窗口行号
+		    col:	窗口列号
+		    modifiers:	按键修饰符。可选值:
+				    0x4	Shift
+				    0x8	Alt
+				   0x10	Ctrl
+		  会将所有文件加入 |argument-list|，窗口会编辑 {files} 中首个
+		  文件。详见 |drag-n-drop|。
+
+		"findrepl":
+		  {仅当 GUI 提供查找/替代对话框时才可用}
+		  执行文本搜索和替代。{args} 可用项为:
+		    find_text:	待搜索文本
+		    repl_text:	替代文本
+		    flags:	搜索/替代控制标志位。可选值:
+				    1	搜索下一项 (搜索对话框)
+				    2	搜索下一项 (替代对话框)
+				    3	单次替代
+				    4	全部替代
+				    8	仅匹配完整单词
+				   16	区分大小写
+		    forward:	为 1 则搜索方向为正向
+
+		"mouse":
+		  鼠标按钮点击或鼠标移动。{args} 可用项为:
+		    button:	鼠标按键。可选值:
+				    0	鼠标左键
+				    1	鼠标中键
+				    2	鼠标右键
+				    3	释放鼠标键
+				    4	滚轮下滚
+				    5	滚轮上滚
+				    6	滚轮左滚
+				    7	滚轮右滚
+		    row:	点击行号。Vim 窗口首行为 1，末行为 'lines'
+		    col:	点击列号。最大值为 'columns'
+		    multiclick:	为 1 代表注入多次点击事件
+		    modifiers:	按键修饰符。可选值:
+				    4	按下 Shift
+				    8	按下 Alt
+				   16	按下 Ctrl
+		    move:	可选；给出且为 TRUE 时，生成鼠标移动事件。
+				仅使用且必须提供 row 和 col 值，坐标单位由
+				"cell" 决定，可为像素或屏幕单元格。
+				仅当 'mousemoveevent' 开启，或有任意弹窗监听鼠
+				标移动事件时，此事件才会发送。
+		    cell:	可选: 给出且为 TRUE 时，"move" 使用屏幕单元格
+				而非像素坐标
+
+		"scrollbar":
+		  设置或拖动左侧、右侧或水平滚动条。仅当滚动条实际存在时才可
+		  用。{args} 可用项为:
+		    which:	选择滚动条。可选值:
+				    left  当前窗口的左侧滚动条
+				    right 当前窗口的右侧滚动条
+				    hor   水平滚动条
+		    value:	滚动量。对垂直滚动条，{value} 取值范围为 0 到
+				缓冲区总行数减一。假定 'wrap' 未置位，对水平滚
+				动条，{value} 取值范围为 1 到最长行长度
+		    dragging:	为 1 则拖动滚动条，为 0 则点击滚动条
+
+		"key":
+		  {仅支持 MS-Windows}
+		  底层键盘事件 (如释放或按下按键)。
+		  {args} 可用项为:
+		    event:	可选值:
+				    keyup   生成按键释放事件
+				    keydown 生成按键按下事件
+		    keycode:    用于按键释放/按下事件的键码
+								*E1291*
+
+		"tabline":
+		  鼠标点击标签栏，选中标签页。{args} 可用项为:
+		    tabnr:	标签页号
+
+		"tabmenu":
+		  选中标签栏菜单项。{args} 可用项为:
+		    tabnr:	标签页号
+		    item:	标签页菜单项号。1 为首个菜单项，2 为第二个，依
+				此类推
+
+		注入 GUI 事件后，一般需要调用 |feedkeys()| 处理事件，示例: >
+			call feedkeys("y", 'Lx!')
+<
+		事件添加成功返回 TRUE，如果失败则返回 FALSE。
+
+		也可用作 |method|: >
+			GetEvent()->test_gui_event({args})
+<
+		返回类型: |vim9-boolean|
+
+test_ignore_error({expr})			 *test_ignore_error()*
+		忽略所有包含 {expr} 的错误。改为显示普通提示消息。
+		仅用于测试，适用于无法使用 try/catch 捕获错误的情况 (因为这样
+		会跳过后续代码)。
+		{expr} 按本义使用，不作为模式处理。
+		{expr} 为字符串 "RESET" 时，清空被忽略的错误列表。
+
+		也可用作 |method|: >
+			GetErrorText()->test_ignore_error()
+<
+		返回类型: 无
+
+test_mswin_event({event}, {args})		*test_mswin_event()*
+		{仅支持 MS-Windows GUI 和控制台}
+		生成带参数 {args} 的底层 MS-Windows 事件 {event}，用于测试 Vim
+		功能。
+
+		{event} 可选值:
+		    "mouse"	鼠标事件
+		    "key"	键盘事件
+		    "set_keycode_trans_strategy"
+				修改键码转换方式
+
+		"mouse":
+		  鼠标按钮点击或鼠标移动事件。{args} 可用项为:
+		    button:	鼠标按键。可选值:
+				    0	鼠标右键
+				    1	鼠标中键
+				    2	鼠标左键
+				    3	释放鼠标键
+				    4	滚轮下滚
+				    5	滚轮上滚
+				    6	滚轮左滚
+				    7	滚轮右滚
+		    row:	点击行号。Vim 窗口首行为 1，末行为 'lines'
+		    col:	点击列号。最大值为 'columns'。
+				注意: 对控制台应用，row 和 col 总使用屏幕单元
+				格。而对 GUI，坐标单位由 "cell" 决定，可为像素
+				或屏幕单元格。
+		    multiclick:	为 1 代表注入多次点击事件
+		    modifiers:	按键修饰符。可选值:
+				    4	按下 Shift
+				    8	按下 Alt
+				   16	按下 Ctrl
+		    move:	可选；给出且为 TRUE 时，生成鼠标移动事件。
+				仅使用且必须提供 row 和 col 值。
+				仅当 'mousemoveevent' 开启，或有任意弹窗监听鼠
+				标移动事件时，此事件才会发送。
+		    cell:	GUI 可选: 给出且为 TRUE 时，"move" 使用屏幕单
+				元格而非像素坐标。控制台不使用此设置。
+
+		"key":
+		  底层键盘事件 (如释放或按下按键)。
+		  {args} 可用项为:
+		    event:	可选值:
+				    keyup   生成按键释放事件
+				    keydown 生成按键按下事件
+		    keycode:    用于按键释放/按下事件的键码
+		    modifiers:	可选；按键修饰符。可选值:
+				    2	按下 Shift
+				    4	按下 Ctrl
+				    8	按下 Alt
+				注意: 该修饰符数值与鼠标修饰符不同。
+		    execute:	可选。类似 |feedkeys()| 的 x 模式。给出且为真
+				(非零) 时，Vim 会处理所有缓冲未处理 (预输入)
+				的键盘事件。此时其余 {args} 项目可选。
+
+		"set_keycode_trans_strategy":
+		  |w32-experimental-keycode-trans-strategy|
+		  修改键码转换方式。可选值:
+		    experimental:   v8.2.4807 补丁之后的方案，调用 Win API
+				    ToUnicode()。
+		    classic:	    v8.2.4807 补丁之前的方案，调用 Win API
+				    TranslateMessage()。
+
+		事件添加或执行成功则返回 TRUE，如果失败则返回 FALSE。
+
+		也可用作 |method|: >
+			GetEvent()->test_mswin_event({args})
+<
+		返回类型: |vim9-boolean|
+
+
+test_null_blob()					*test_null_blob()*
+		返回 null |Blob|。仅用于测试。
+
+		返回类型: |Blob|
+
+test_null_channel()					*test_null_channel()*
+		{仅当编译时加入 |+channel| 特性才有效}
+		返回 null |Channel|。仅用于测试。
+
+		返回类型: |Channel|
+
+test_null_dict()					*test_null_dict()*
+		返回 null |Dict|。仅用于测试。
+
+		返回类型: dict<any>
+
+test_null_function()					*test_null_function()*
+		返回 null |Funcref|。仅用于测试。
+
+		返回类型: func(...): unknown
+
+test_null_job()						*test_null_job()*
+		{仅当编译时加入 |+job| 特性才有效}
+		返回 null |Job|。仅用于测试。
+
+		返回类型: |job|
+
+test_null_list()					*test_null_list()*
+		返回 null |List|。仅用于测试。
+
+		返回类型: list<any>
+
+test_null_partial()					*test_null_partial()*
+		返回 null |Partial|。仅用于测试。
+
+		返回类型: func(...): unknown
+
+test_null_string()					*test_null_string()*
+		返回 null |String|。仅用于测试。
+
+		返回类型: |String|
+
+test_null_tuple()					*test_null_tuple()*
+		返回 null |Tuple|。仅用于测试。
+
+		返回类型: |Tuple|
+
+test_option_not_set({name})			*test_option_not_set()*
+		复位指示选项 {name} 已设置的标志位。即使选项已有修改，其行为仍
+		视同缺省值。示例: >
+			set ambiwidth=double
+			call test_option_not_set('ambiwidth')
+<		此时 'ambiwidth' 选项实际值为 "double"，但行为视同未被修改过。
+		仅用于测试！
+
+		也可用作 |method|: >
+			GetOptionName()->test_option_not_set()
+<
+		返回类型: 无
+
+test_override({name}, {val})				*test_override()*
+		覆盖 Vim 部分内部逻辑，方便运行测试。仅用于 Vim 测试！
+		{val} 非零时，启用覆盖行为，{val} 为零时，关闭覆盖行为。
+		{name} 目前可用值为:
+
+		{name}	     {val} 非零时效果 ~
+		alloc_lines  复制所有缓冲区行到分配内存，方便 valgrind 捕获内
+			     存访问错误。
+		autoload     `import autoload` 会立即加载脚本，不延迟到首次使
+			     用时再加载。
+		char_avail   禁用 char_avail() 函数。
+		defcompile   加载脚本时，所有其中的 |:def| 函数会在定义时直接
+			     编译。类似脚本内执行 |:defcompile| 命令。
+		nfa_fail     使 NFA 正则表达式引擎失败，强制回退到老式引擎
+		no_query_mouse  "dec" 终端不查询鼠标位置。
+		no_wait_return	置位 "no_wait_return" (不等待回车) 标志位。不
+				会被 "ALL" 复位。
+		redraw       禁用 redrawing() 函数。
+		redraw_flag  忽略 RedrawingDisabled (暂停重绘) 标志位。
+		starting     复位 "starting" 变量，见下。
+		syn_idlist_cache
+			     禁用语法 "contains"/簇列表解析缓存。
+		term_props   检测版本应答字符串时，复位所有终端属性。
+		ui_delay     设置 ui_delay() 的毫秒时长；对消息等待，覆盖缺省
+			     3 秒超时。
+		unreachable  `:throw` 和 `:return` 之后的代码不再报错。
+		uptime	     覆盖 sysinfo.uptime。
+		vterm_title  禁止终端中运行的作业修改窗口标题。
+		ALL	     清除 alloc_lines 外的所有覆盖项 (忽略 {val})。
+			     (译者注: 除 alloc_lines 外，也不清除以下项目:
+				autoload、defcompile、no_wait_return、
+				unreachable、vert_title)
+
+		"starting" 用于让测试模拟初始化完成后的环境。测试执行时会加载
+		将 "starting" 变量设为非零值的脚本。此设置通常有助于加速测试，
+		但部分场景会改变实际行为，导致测试异常。以下操作: >
+			call test_override('starting', 1)
+<		会保存 "starting" 值，然后将其清零 (即初始化已完成)。以下操作
+		则恢复原值: >
+			call test_override('starting', 0)
+
+<		可用 `:defer` 保证标志位在使用后自动复位: >
+			call test_override('unreachable', 1)
+			defer call test_override('unreachable', 0)
+
+<		也可用作 |method|: >
+			GetOverrideVal()-> test_override('starting')
+<
+		返回类型: 无
+
+test_refcount({expr})					*test_refcount()*
+		返回 {expr} 的引用计数。如果 {expr} 所属类型无引用计数，返回
+		-1。仅用于测试。
+
+		也可用作 |method|: >
+			GetVarname()->test_refcount()
+<
+		返回类型: |Number|
+
+test_setmouse({row}, {col})				*test_setmouse()*
+		设置下次鼠标动作所用的鼠标位置。
+		{row} 和 {col} 从 1 开始计数。
+		示例: >
+			call test_setmouse(4, 20)
+			call feedkeys("\<LeftMouse>", "xt")
+<
+		返回类型: 无
+
+
+test_settime({expr})					*test_settime()*
+		设置 Vim 内部使用的时间。当前仅用于历史记录的时间戳 (用于
+		viminfo) 以及撤销功能。
+		{expr} 计算结果必须为数值。
+		值为 1 时，Vim 在给出警告或错误信息后，不再休眠。
+		值为零则恢复默认行为。
+
+		也可用作 |method|: >
+			GetTime()->test_settime()
+<
+		返回类型: 无
+
+test_srand_seed([{seed}])				*test_srand_seed()*
+		[seed] 给出时，设置 `srand()` 使用的种子值。省略时则删除测试用
+		种子。
+
+		返回类型: 无
+
+test_unknown()						*test_unknown()*
+		返回一个未知类型值。仅用于测试。
+
+		返回类型: unknown
+
+test_void()						*test_void()*
+		返回一个 void 类型值。仅用于测试。
+
+		返回类型: 无
+
+==============================================================================
+3. 断言函数					*assert-functions-details*
+
+
+assert_beeps({cmd})					*assert_beeps()*
+		执行 {cmd}，命令_不_产生响铃或可视响铃时，向 |v:errors| 添加错
+		误信息。
+		另见 |assert_fails()|、|assert_nobeep()| 和 |assert-return|。
+
+		也可用作 |method|: >
+			GetCmd()->assert_beeps()
+<
+		返回类型: |Number|
+
+							*assert_equal()*
+assert_equal({expected}, {actual} [, {msg}])
+		{expected} 不等于 {actual} 时，向 |v:errors| 添加错误信息并返
+		回 1。否则返回零。|assert-return|
+		错误信息格式为 "Expected {expected} but got {actual}"。{msg}
+		给出时，加到错误信息开头。从脚本调用时，开头还会附带断言所在位
+		置。
+
+		没有自动类型转换，字符串 "4" 不同于数值 4。数值 4 也不同于浮点
+		数 4.0。不使用 'ignorecase' 设置，大小写永远敏感。
+		示例: >
+			call assert_equal('foo', 'bar', 'baz')
+<		会向 |v:errors| 写入以下信息:
+			test.vim line 12: baz: Expected 'foo' but got 'bar' ~
+
+		也可用作 |method|，基是作为第二个参数传递的: >
+			mylist->assert_equal([1, 2, 3])
+<
+		返回类型: |Number|
+
+							*assert_equalfile()*
+assert_equalfile({fname-one}, {fname-two} [, {msg}])
+		文件 {fname-one} 和 {fname-two} 文本不完全一致时，向
+		|v:errors| 添加错误信息。另见 |assert-return|。
+		如果文件 {fname-one} 或 {fname-two} 不存在，错误信息会指明该情
+		况。
+		主要配合 |terminal-diff| 使用。
+
+		也可用作 |method|: >
+			GetLog()->assert_equalfile('expected.log')
+<
+		返回类型: |Number|
+
+assert_exception({error} [, {msg}])			*assert_exception()*
+		|v:exception| 不包含字符串 {error} 时，向 |v:errors| 添加错误
+		信息。另见 |assert-return|。
+		用于断言命令抛出异常。建议使用错误号加冒号，可规避语言翻译带来
+		的匹配问题: >
+			try
+			  commandthatfails
+			  call assert_false(1, '命令本应失败')
+			catch
+			  call assert_exception('E492:')
+			endtry
+<
+		返回类型: |Number|
+
+							*assert_fails()*
+assert_fails({cmd} [, {error} [, {msg} [, {lnum} [, {context}]]]])
+		执行 {cmd}，命令_不_产生错误或错误信息中找不到 {error} 时，向
+		|v:errors| 添加错误信息。另见 |assert-return|。
+							*E856*
+		{error} 为字符串时，必须在第一条错误信息中按本义匹配。通常使用
+		错误码加冒号，例如 "E123:"。 >
+			call assert_fails('bad cmd', 'E987:')
+<
+		{error} 为包含一到两个字符串的列表时，作为一对模式处理。第一个
+		模式需要匹配第一条错误信息: >
+			call assert_fails('cmd', ['E987:.*预期 bool'])
+<		第二个模式 (如有) 需要匹配最后一条错误信息。
+		仅产生一条错误信息时，两个模式必须都匹配。可用于检查是否仅出现
+		一条错误。
+		要只匹配最后一条错误信息，首错模式可用空串: >
+			call assert_fails('cmd', ['', 'E987:'])
+<
+		{msg} 为空时不使用。此参数传入空串可用于传入后面的 {lnum} 参数
+		并获取缺省信息。
+							*E1115*
+		{lnum} 给出且非负时，如果 {error} 参数给出且匹配成功，会比对错
+		误报告所在行号。行号可以是函数内或脚本内的行号。
+							*E1116*
+		{context} 给出时，会用作模式，匹配 {lnum} 所在上下文 (即脚本名
+		或函数名)。
+
+		注意 响铃不算错误，而部分失败命令只会触发响铃。这类场景可改用
+		|assert_beeps()| 断言。
+
+		也可用作 |method|: >
+			GetCmd()->assert_fails('E99:')
+<
+		返回类型: |Number|
+
+assert_false({actual} [, {msg}])			*assert_false()*
+		{actual} 不为假时，向 |v:errors| 添加错误信息，其余行为类同
+		|assert_equal()|。
+		错误信息格式为 "Expected False but got {actual}"。{msg} 给出
+		时，加到错误信息开头。从脚本调用时，开头还会附带断言所在位置。
+
+		另见 |assert-return|。
+
+		零值视作假值。如果 {actual} 不是数值，断言失败。
+
+		也可用作 |method|: >
+			GetResult()->assert_false()
+<
+		返回类型: |Number|
+
+assert_inrange({lower}, {upper}, {actual} [, {msg}])	 *assert_inrange()*
+		对数值和 |Float| 值进行断言。{actual} 小于 {lower}、或大于
+		{upper} 时，向 |v:errors| 添加错误信息。另见 |assert-return|。
+		错误信息格式为
+		"Expected range {lower} - {upper}, but got {actual}"。{msg} 给
+		出时，加到错误信息开头。
+
+		返回类型: |Number|
+
+							*assert_match()*
+assert_match({pattern}, {actual} [, {msg}])
+		模式 {pattern} 不匹配 {actual} 时，向 |v:errors| 添加错误信
+		息。另见 |assert-return|。
+		错误信息格式为 "Pattern {pattern} does not match {actual}"。
+		{msg} 给出时，加到错误信息开头。从脚本调用时，开头还会附带断言
+		所在位置。
+
+		{pattern} 的匹配规则同 |=~|: 匹配总是假定 'magic' 置位而
+		'cpoptions' 为空，忽略 'magic' 或 'cpoptions' 的实际值。
+
+		{actual} 视为字符串，必要时会进行自动转换。
+		"^" 和 "$" 分别匹配文本的首尾。两者同时使用可匹配完整文本。
+
+		示例: >
+			call assert_match('^f.*o$', 'foobar')
+<		会向 |v:errors| 写入以下信息:
+			test.vim line 12: Pattern '^f.*o$' does not match 'foobar' ~
+
+		也可用作 |method|: >
+			getFile()->assert_match('foo.*')
+<
+		返回类型: |Number|
+
+assert_nobeep({cmd})					*assert_nobeep()*
+		执行 {cmd}，命令产生响铃或可视响铃时，向 |v:errors| 添加错误信
+		息。
+		另见 |assert_beeps()|。
+
+		也可用作 |method|: >
+			GetCmd()->assert_nobeep()
+<
+		返回类型: |Number|
+
+							*assert_notequal()*
+assert_notequal({expected}, {actual} [, {msg}])
+		|assert_equal()| 的反向断言: {expected} 等于 {actual} 时，向
+		|v:errors| 添加错误信息。
+		另见 |assert-return|。
+
+		也可用作 |method|: >
+			mylist->assert_notequal([1, 2, 3])
+<
+		返回类型: |Number|
+
+							*assert_notmatch()*
+assert_notmatch({pattern}, {actual} [, {msg}])
+		|assert_match()| 的反向断言: {pattern} 匹配 {actual} 时，向
+		|v:errors| 添加错误信息。
+		另见 |assert-return|。
+
+		也可用作 |method|: >
+			getFile()->assert_notmatch('bar.*')
+<
+		返回类型: |Number|
+
+assert_report({msg})					*assert_report()*
+		直接报告测试失败，错误信息使用字符串 {msg}。
+		总是返回一。
+
+		也可用作 |method|: >
+			GetMessage()->assert_report()
+<
+		返回类型: |Number|
+
+
+assert_true({actual} [, {msg}])				*assert_true()*
+		{actual} 不为真时，向 |v:errors| 添加错误信息，其余行为类同
+		|assert_equal()|。
+		另见 |assert-return|。
+		非零值视作真值。如果 {actual} 不是数值，断言失败。
+		{msg} 给出时，加到缺省错误信息开头。从脚本调用时，开头还会附带
+		断言所在位置。
+
+		也可用作 |method|: >
+			GetResult()->assert_true()
+<
+		返回类型: |Number|
+
+
+ vim:tw=78:ts=8:noet:ft=help:norl:

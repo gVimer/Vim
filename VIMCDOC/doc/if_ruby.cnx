@@ -1,0 +1,243 @@
+*if_ruby.txt*	适用于 Vim 9.2 版本。  最近更新: 2020年4月
+
+
+		  VIM 参考手册	by Shugo Maeda
+				译者: Willis、tocer
+
+Vim 的 Ruby 接口					*ruby* *Ruby*
+
+
+1. 命令				|ruby-commands|
+2. Vim 模块			|ruby-vim|
+3. Vim::Buffer 对象		|ruby-buffer|
+4. Vim::Window 对象		|ruby-window|
+5. 全局变量			|ruby-globals|
+6. rubyeval() Vim 函数		|ruby-rubyeval|
+7. 动态调入			|ruby-dynamic|
+
+		*E266* *E267* *E268* *E269* *E270* *E271* *E272* *E273*
+
+{仅当编译 Vim 时加入 |+ruby| 特性才有效}
+
+ruby 的主页是 http://www.ruby-lang.org/。那里可以找到 Ruby 的下载链接。
+
+==============================================================================
+1. 命令							*ruby-commands*
+
+							*:ruby* *:rub*
+:rub[y] {cmd}		执行 Ruby 命令 {cmd}。要测试是否可用的简单命令: >
+				:ruby print "Hello"
+
+:rub[y] << [trim] [{endmarker}]
+{script}
+{endmarker}
+			执行 Ruby 脚本 {script}。
+
+			如果省略了 [endmarker]，默认为一个句号 '.' (译者注:
+			换而言之，此时 {script} 结束后必须给出 '.'，不能省
+			略)，类似于 |:append| 和 |:insert| 命令。详见
+			|:let-heredoc|。
+
+
+			这种 |:ruby| 命令形式主要用于在 vim 脚本里面内嵌 ruby
+			代码。
+
+			备注: 如果编译时未加入 Ruby 特性，此命令不能工作。要避
+			免错误，见 |script-here|。
+
+示例 Vim 脚本: >
+
+	function! RedGem()
+	ruby << EOF
+	class Garnet
+		def initialize(s)
+			@buffer = Vim::Buffer.current
+			vimputs(s)
+		end
+		def vimputs(s)
+			@buffer.append(@buffer.count,s)
+		end
+	end
+	gem = Garnet.new("pretty")
+	EOF
+	endfunction
+<
+要看运行中的 Ruby 版本: >
+	:ruby print RUBY_VERSION
+<
+
+						*:rubydo* *:rubyd* *E265*
+:[range]rubyd[o] {cmd}	对 [range] 行范围的每行执行 Ruby 命令 {cmd}，其中，$_
+			被依次赋值为每行的文本，不包含行尾的 <EOL>。修改 $_ 可
+			用于直接修改行文本，但要注意无法用此命令来添加或者删除
+			行。
+			缺省 [range] 为整个文件: "1,$"。
+
+							*:rubyfile* *:rubyf*
+:rubyf[ile] {file}	执行 {file} 文件里的 Ruby 脚本。和 `:ruby load 'file'`
+			效果相同，但可用文件名自动补全功能。
+
+
+|sandbox| 里不能执行 Ruby 命令。
+
+==============================================================================
+2. Vim 模块						*ruby-vim*
+
+Ruby 代码通过 "Vim" 模块调用所有的 vim 功能。
+
+概述: >
+	print "Hello"				# 显示消息
+	Vim.command(cmd)			# 执行 ex 命令
+	num = Vim::Window.count			# 获取窗口行数
+	w = Vim::Window[n]			# 获取第 "n" 个窗口
+	cw = Vim::Window.current		# 获取当前窗口
+	num = Vim::Buffer.count			# 获取缓冲区的总数
+	b = Vim::Buffer[n]			# 获取第 "n" 个缓冲区
+	cb = Vim::Buffer.current		# 获取当前缓冲区
+	w.height = lines			# 设置窗口高度
+	w.cursor = [row, col]			# 设置窗口里的光标位置
+	pos = w.cursor				# 获取数组形式的光标 [行, 列]
+	name = b.name				# 获取缓冲区的文件名
+	line = b[n]				# 获取缓冲区的某一行
+	num = b.count				# 获取缓冲区总行数
+	b[n] = str				# 设置缓冲区的某一行
+	b.delete(n)				# 删除某一行
+	b.append(n, str)			# 在第 n 行后追加一行
+	line = Vim::Buffer.current.line		# 获取当前行
+	num = Vim::Buffer.current.line_number	# 获取当前行号
+	Vim::Buffer.current.line = "test"	# 设置当前行
+<
+
+模块函数:
+
+							*ruby-message*
+Vim::message({msg})
+	显示消息 {msg}。
+
+							*ruby-blob*
+Vim::blob({arg})
+	返回来自 {arg} 的 |Blob| 字面常量字符串。
+
+							*ruby-set_option*
+Vim::set_option({arg})
+	设置 vim 选项。{arg} 可以是任何一个 ":set" 命令接受的命令形式。注意 这
+	意味着参数里不能有空格！参见 |:set|。
+
+							*ruby-command*
+Vim::command({cmd})
+	执行 Ex 命令 {cmd}。
+
+							*ruby-evaluate*
+Vim::evaluate({expr})
+	用 vim 内部的表达式解析器执行 {expr} (参看 |expression|)。根据执行结果
+	的类型，返回的相应类型如下:
+	- Integer，如果 Vim 表达式返回数值
+	- Float，如果 Vim 表达式返回浮点数
+	- String，如果 Vim 表达式返回字符串
+	- Array，如果 Vim 表达式返回 Vim 列表
+	- Hash，如果 Vim 表达式返回 Vim 字典
+	字典和列表会被递归扩展。
+
+==============================================================================
+3. Vim::Buffer 对象					*ruby-buffer*
+
+Vim::Buffer 对象代表 Vim 缓冲区。
+
+类方法:
+
+current		返回当前缓冲区对象。
+count		返回缓冲区的总数。
+self[{n}]	返回第 {n} 个缓冲区。首个缓冲区的序号是 0。
+
+方法:
+
+name		返回缓冲区的全名。
+number		返回缓冲区的序号。
+count		返回缓冲区总行数。
+length		返回缓冲区总行数。
+self[{n}]	从缓冲区中返回一行。{n} 是行号。
+self[{n}] = {str}
+		设置缓冲区的一行。{n} 是行号。
+delete({n})	删除缓冲区的一行。{n} 是行号。
+append({n}, {str})
+		在缓冲区第 {n} 行后追加一行。
+line		缓冲区激活时，返回缓冲区当前行。
+line = {str}    缓冲区激活时，设置缓冲区当前行。
+line_number     缓冲区激活时，返回当前行行号。
+
+==============================================================================
+4. Vim::Window 对象					*ruby-window*
+
+Vim::Window 对象代表 Vim 窗口。
+
+类方法:
+
+current		返回当前窗口对象。
+count		返回窗口的总数。
+self[{n}]	返回第 {n} 个窗口。首个窗口的序号是 0。
+
+方法:
+
+buffer		返回窗口中显示的缓冲区对象。
+height		返回窗口的高度。
+height = {n}	设置窗口的高度为 {n}。
+width		返回窗口的宽度。
+width = {n}	设置窗口的宽度为 {n}。
+cursor		返回光标位置数组: [行、列]。
+		首行号为 1 而首列号为 0。
+cursor = [{row}, {col}]
+		设置光标位置为行 {row} 和列 {col}。
+
+==============================================================================
+5. 全局变量						*ruby-globals*
+
+提供两个全局变量。
+
+$curwin		当前窗口对象。
+$curbuf		当前缓冲区对象。
+
+==============================================================================
+6. rubyeval() Vim 函数					*ruby-rubyeval*
+
+|rubyeval()| 函数提供了反向接口，它用于计算 Ruby 表达式，并将计算结果返回给
+Vim 脚本。
+
+Ruby "true"、"false" 和 "nil" 值返回时会被转换为 v:true、v:false 和 v:null。
+
+==============================================================================
+7. 动态调入						*ruby-dynamic*
+
+MS-Windows 和 Unix 上，可动态调入 Ruby 库。此时，|:version| 输出会包含
+|+ruby/dyn|。
+
+此时，Vim 仅在必要时才会寻找 Ruby DLL 或共享库。不使用 Ruby 接口时，就不需要库
+文件。因此，即使没有这些文件，仍然可以使用 Vim。
+
+
+MS-Windows ~
+
+必须安装正确的 Ruby 版本才能工作。该包可从此处下载:
+http://rubyinstaller.org/downloads/
+写作本文档时，最新版本是 rubyinstaller-2.2.5.exe
+
+要使用 Ruby 接口，必须确保 Ruby DLL 位于系统搜索路径中。可以在控制台窗口里输入
+"path"，查看当前使用的搜索路径。也可用 'rubydll' 选项指定 Ruby DLL 的位置。
+
+DLL 的版本必须和 Vim 编译时使用的 Ruby 版本保持一致。写作本文档时，该名字为
+"msvcrt-ruby220.dll"，对应 Ruby 2.2.X。要确信这一点，可编辑 "gvim.exe" 文件，
+并查找 "ruby\d*.dll\c"。
+
+编译 Vim 时，如果希望使用带 MSVC 的 RubyInstaller 1.9 或 2.X，需要一点技巧。详
+见 src/INSTALLpc.txt。
+
+Vim 使用 RubyInstaller 2.4 或以后版本编译时，可能还需要在 PATH 环境变量里加入
+"C:\Ruby<version>\bin\ruby_builtin_dlls"。
+
+
+Unix ~
+
+可用 'rubydll' 选项指定 Ruby 共享库文件的位置，替代编译时指定的
+DYNAMIC_RUBY_DLL 文件。共享库的版本必须和 Vim 编译使用的 Ruby 版本保持一致。
+
+==============================================================================
+ vim:tw=78:ts=8:noet:ft=help:norl:

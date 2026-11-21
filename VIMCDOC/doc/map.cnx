@@ -1,0 +1,1730 @@
+*map.txt*	适用于 Vim 9.2 版本。  最近更新: 2026年7月
+
+
+		  VIM 参考手册	by Bram Moolenaar
+				译者: con<con@netease.com>
+
+
+按键映射、缩写和用户定义命令。
+
+本主题的介绍请参考用户手册 |05.4|，|24.7| 和 |40.1|。
+
+1. 按键映射			|key-mapping|
+   1.1 映 射 命 令				|:map-commands|
+   1.2 特殊参数					|:map-arguments|
+   1.3 映射与运行模式				|:map-modes|
+   1.4 查看映射列表				|map-listing|
+   1.5 特殊键映射				|:map-special-keys|
+   1.6 特殊字符					|:map-special-chars|
+   1.7 选择合适映射按键				|map-which-keys|
+   1.8 示例					|map-examples|
+   1.9 映射执行规则				|map-typing|
+   1.10 ALT 键映射				|:map-alt-keys|
+   1.11 META 键映射				|:map-meta-keys|
+   1.12 SUPER 或 COMMAND 键映射			|:map-super-keys|
+   1.13 扩展修饰键模式映射			|modifyOtherKeys|
+   1.14 Kitty 键盘协议映射			|kitty-keyboard-protocol|
+   1.14 映射操作符				|:map-operator|
+2. 缩写				|abbreviations|
+3. 局部映射和函数		|script-local|
+4. 用户自定义命令		|user-commands|
+
+==============================================================================
+1. 按键映射				*key-mapping* *mapping* *macro*
+
+按键映射用于改变按键的原有功能。最常见用法是为功能键定义为一组命令序列。
+例如: >
+
+	:map <F2> a<C-R>=strftime("%c")<CR><Esc>
+
+该映射在光标后追加当前的日期和时间 (用 |<>| 记法)。
+
+
+1.1 映 射 命 令						*:map-commands*
+
+vim 提供创建、删除、查看映射的相关命令。|map-overview| 给出各类 "map" 命令及对
+应模式的总览。
+
+{lhs}	表示左手边 (被触发的按键或按键序列)	*{lhs}*
+{rhs}	表示右手边 (实际执行的按键或命令序列)	*{rhs}*
+
+:map	{lhs} {rhs}		|mapmode-nvo|		*:map*
+:nm[ap]	{lhs} {rhs}		|mapmode-n|		*:nm* *:nmap*
+:vm[ap]	{lhs} {rhs}		|mapmode-v|		*:vm* *:vmap*
+:xm[ap]	{lhs} {rhs}		|mapmode-x|		*:xm* *:xmap*
+:smap	{lhs} {rhs}		|mapmode-s|		    *:smap*
+:om[ap]	{lhs} {rhs}		|mapmode-o|		*:om* *:omap*
+:map!	{lhs} {rhs}		|mapmode-ic|		*:map!*
+:im[ap]	{lhs} {rhs}		|mapmode-i|		*:im* *:imap*
+:lm[ap]	{lhs} {rhs}		|mapmode-l|		*:lm* *:lma* *:lmap*
+:cm[ap]	{lhs} {rhs}		|mapmode-c|		*:cm* *:cmap*
+:tma[p]	{lhs} {rhs}		|mapmode-t|		*:tma* *:tmap*
+			在对应模式下，将键序列 {lhs} 映射为 {rhs}。执行时，
+			{rhs} 内容会继续解析映射规则。支持映射嵌套和递归。
+			注意: {rhs} 会保留拖尾空格，因为空格本身是合法的普通模
+			式命令。见 |map-trailing-white|。
+
+						*:nore* *:norem*
+:no[remap]  {lhs} {rhs}		|mapmode-nvo|	*:no*  *:noremap* *:nor*
+:nn[oremap] {lhs} {rhs}		|mapmode-n|	*:nn*  *:nnoremap*
+:vn[oremap] {lhs} {rhs}		|mapmode-v|	*:vn*  *:vnoremap*
+:xn[oremap] {lhs} {rhs}		|mapmode-x|	*:xn*  *:xnoremap*
+:snor[emap] {lhs} {rhs}		|mapmode-s|	*:snor* *:snore* *:snoremap*
+:ono[remap] {lhs} {rhs}		|mapmode-o|	*:ono* *:onoremap*
+:no[remap]! {lhs} {rhs}		|mapmode-ic|	*:no!* *:noremap!*
+:ino[remap] {lhs} {rhs}		|mapmode-i|	*:ino* *:inor* *:inoremap*
+:ln[oremap] {lhs} {rhs}		|mapmode-l|	*:ln*  *:lnoremap*
+:cno[remap] {lhs} {rhs}		|mapmode-c|	*:cno* *:cnor* *:cnoremap*
+:tno[remap] {lhs} {rhs}		|mapmode-t|	*:tno* *:tnoremap*
+			在对应模式下，将键序列 {lhs} 映射为 {rhs}。执行时，
+			{rhs} 内容不再触发映射。避免映射嵌套和递归。常用于重定
+			义原有命令。
+			注意: {rhs} 里的按键也不触发缩写，但 |i_CTRL-]| 和
+			|c_CTRL-]| 除外。
+			注意: {rhs} 包含 <Plug> 时，即使关闭了重映射，该部分仍
+			可正常应用。
+
+:unm[ap]  {lhs}			|mapmode-nvo|		*:unm*  *:unmap*
+:nun[map] {lhs}			|mapmode-n|		*:nun*  *:nunmap*
+:vu[nmap] {lhs}			|mapmode-v|		*:vu*   *:vunmap*
+:xu[nmap] {lhs}			|mapmode-x|		*:xu*   *:xunmap*
+:sunm[ap] {lhs}			|mapmode-s|		*:sunm* *:sunmap*
+:ou[nmap] {lhs}			|mapmode-o|		*:ou*   *:ounmap*
+:unm[ap]! {lhs}			|mapmode-ic|		*:unm!* *:unmap!*
+:iu[nmap] {lhs}			|mapmode-i|		*:iu*   *:iunmap*
+:lu[nmap] {lhs}			|mapmode-l|		*:lu*   *:lunmap*
+:cu[nmap] {lhs}			|mapmode-c|		*:cu*   *:cun* *:cunmap*
+:tunma[p] {lhs}			|mapmode-t|		*:tunma* *:tunmap*
+			删除当前命令对应模式下，{lhs} 的按键映射。该映射在其他
+			模式下仍会保留。
+			映射 {lhs} 与某条映射的 {rhs} 相匹配时，删除依然生效。
+			此特性主要用于处理缩写。
+			备注: {lhs} 会保留拖尾空格。见 |map-trailing-white|。
+
+:mapc[lear]			|mapmode-nvo|		*:mapc*   *:mapclear*
+:nmapc[lear]			|mapmode-n|		*:nmapc*  *:nmapclear*
+:vmapc[lear]			|mapmode-v|		*:vmapc*  *:vmapclear*
+:xmapc[lear]			|mapmode-x|		*:xmapc*  *:xmapclear*
+:smapc[lear]			|mapmode-s|		*:smapc*  *:smapclear*
+:omapc[lear]			|mapmode-o|		*:omapc*  *:omapclear*
+:mapc[lear]!			|mapmode-ic|		*:mapc!*  *:mapclear!*
+:imapc[lear]			|mapmode-i|		*:imapc*  *:imapclear*
+:lmapc[lear]			|mapmode-l|		*:lmapc*  *:lmapclear*
+:cmapc[lear]			|mapmode-c|		*:cmapc*  *:cmapclear*
+:tmapc[lear]			|mapmode-t|		*:tmapc*  *:tmapclear*
+			清除当前命令对应模式下_所有_按键映射。
+			<buffer> 参数指定仅删除缓冲区局部映射 |:map-<buffer>|
+			警告: 同时也删除平台缺省映射  |mac-standard-mappings|
+			和 |dos-standard-mappings|。
+
+:map				|mapmode-nvo|
+:nm[ap]				|mapmode-n|
+:vm[ap]				|mapmode-v|
+:xm[ap]				|mapmode-x|
+:sm[ap]				|mapmode-s|
+:om[ap]				|mapmode-o|
+:map!				|mapmode-ic|
+:im[ap]				|mapmode-i|
+:lm[ap]				|mapmode-l|
+:cm[ap]				|mapmode-c|
+:tma[p]				|mapmode-t|
+			列出当前命令对应模式下所有按键映射。`:map` 和 `:map!`
+			最为常用，二者可涵盖多种模式的映射。
+
+:map    {lhs}			|mapmode-nvo|		*:map_l*
+:nm[ap] {lhs}			|mapmode-n|		*:nmap_l*
+:vm[ap] {lhs}			|mapmode-v|		*:vmap_l*
+:xm[ap] {lhs}			|mapmode-x|		*:xmap_l*
+:sm[ap] {lhs}			|mapmode-s|		*:smap_l*
+:om[ap] {lhs}			|mapmode-o|		*:omap_l*
+:map!   {lhs}			|mapmode-ic|		*:map_l!*
+:im[ap] {lhs}			|mapmode-i|		*:imap_l*
+:lm[ap] {lhs}			|mapmode-l|		*:lmap_l*
+:cm[ap] {lhs}			|mapmode-c|		*:cmap_l*
+:tma[p] {lhs}			|mapmode-t|		*:tmap_l*
+			列出当前命令对应模式下，以 {lhs} 开头的按键映射。
+
+映射命令用于将单个按键或按键序列映射为一串字符。可借此为功能键绑定命令序列，按
+键转义等。要保存和恢复现有映射，可见 |:mkexrc|。
+
+							*map-ambiguous*
+多条映射有相同前缀按键序列时，就会产生映射歧义。例如: >
+	:imap aa foo
+	:imap aaa bar
+输入 "aa" 后，需要等待下一个字符才能判断要触发映射 "aa" 还是 "aaa"。等待期间，
+映射不会立即触发。按入空格时，会执行 "aa" 映射，插入 "foo" 加空格。而按下 "a"
+时，会执行 "aaa" 映射，插入 "bar"。
+
+拖尾空格 ~
+							*map-trailing-white*
+下面这条 `:unmap` 命令_无法_正常生效: >
+	:map @@ foo
+	:unmap @@ | print
+
+因为命令分隔符 "|" 之前的空格被视为映射 {lhs} 的一部分，因此试图删除的是 "@@ "
+的映射，更多含拖尾空格的错误示例: >
+	unmap @@ 
+	unmap @@     # Vim9 脚本注释
+	unmap @@     " 老式脚本注释
+
+虽然这类写法会报错，但由于 `unmap @@ ` 拖尾空格肉眼不可见，问题排查难度较高。
+
+通用解决方法是将命令分隔符 "|" 紧贴在映射按键后。空格和注释写在 "|" 后方: >
+
+	unmap @@|    # Vim9 脚本注释
+	unmap @@|    " 老式脚本注释
+
+
+1.2 特 殊 参 数						*:map-arguments*
+
+可用参数 "<buffer>"，"<nowait>"，"<silent>"，"<special>"、"<script>"、"<expr>"
+和 "<unique>" 参数顺序不限。但必须紧跟在命令之后，在其他参数之前。以下称为前导
+参数。
+
+				    *:map-local* *:map-<buffer>* *:map-buffer*
+				    *E224* *E225*
+"<buffer>" 前导参数指定映射仅对当前缓冲区生效。例如: >
+	:map <buffer>  ,w  /[.,;]<CR>
+可在其他缓冲区对同一按键序列 ",w" 设置不同映射: >
+	:map <buffer>  ,w  /[#&!]<CR>
+缓冲区局部映射优先于全局映射。可搭配下面的 <nowait> 使短局部映射覆盖长全局映
+射。
+也可用 "<buffer>" 参数清除缓冲区局部映射: >
+	:unmap <buffer> ,w
+	:mapclear <buffer>
+缓冲区删除时，其局部映射会一同清除，仅卸载缓冲区则不会。局部选项同理。
+更多优先级细节参见 |map-precedence|。
+
+						*:map-<nowait>* *:map-nowait*
+定义缓冲区局部映射 "," 时，可能同时存在以 "," 开始的全局映射。输入 "," 后 Vim
+缺省会等待下一按键才能判断触发哪个映射。<nowait> 前导参数可取消等待。此时映射
+一旦完全匹配就会立即执行，不再等待更多输入。不过，后续字符已输入时仍会正常应用
+相应映射。
+注意 生效需要 <nowait> 映射被完整匹配，且在其他部分匹配映射前先找到。具体前提
+是:
+- 仅存在一条匹配的局部映射，因为局部映射总是优先于全局映射。或
+- 存在部分匹配的其他局部映射，但定义顺序更靠前 (后定义的映射更优先)。
+
+						*:map-<silent>* *:map-silent*
+"<silent>" 前导参数指定映射执行时不在命令行上回显。例如: >
+	:map <silent> ,h /Header<CR>
+执行映射时，将不回显搜索字符串。但命令本身显示的消息仍会正常回显。要同时屏蔽命
+令消息，可为要执行的命令加入 |:silent| 前缀: >
+	:map <silent> ,h :exe ":silent normal /Header\r"<CR>
+注意 部分命令附带效果也会被屏蔽，例如切换命令行补全项目时不再显示切换过程。
+|inputdialog()| 等交互提示不受影响。
+缩写也可使用 "<silent>" 参数，但可能导致命令行重絵异常。
+
+					*:map-<special>* *:map-special*
+"<special>" 前导参数指定映射可正常使用特殊键的 <> 记法，忽略 'cpoptions' 中包
+含的 "<" 标志位 (|cpo-<|)。避免修改该全局设置可能出现的副作用。例如: >
+	:map <special> <F12> /Header<CR>
+<
+						*:map-<script>* *:map-script*
+"<script>" 前导参数限定映射或缩写在执行时，{rhs} 仅能调用当前脚本内以 "<SID>"
+开头的脚本局部映射。作用是避免外部映射的干扰 (如 mswin.vim 对 CTRL-V 的改写)，
+同时允许调用脚本内部定义的映射。
+备注: ":map <script>" 和 ":noremap <script>" 效果相同。这里 "<script>" 参数的
+作用优先于命令名。推荐使用 ":noremap <script>"，语义更直观，明确禁止_大多数_重
+映射。
+
+				*:map-<unique>* *:map-unique* *E226* *E227*
+"<unique>" 前导参数检验唯一性。如果该映射或缩写重定义已有映射或缩写，报错。
+例如: >
+	:map <unique> ,w  /[#&!]<CR>
+定义局部映射时，此参数也会同时检查同名全局映射。因此，以下写法会报错: >
+	:map ,w  /[#&!]<CR>
+	:map <buffer> <unique> ,w  /[.,;]<CR>
+要在自定义映射中保留按键原有功能，参见 |maparg()|。
+
+					*:map-<expr>* *:map-expression*
+"<expr>" 前导参数指定映射或缩写定义时使用的参数作为表达式执行，计算结果作为实
+际映射的 {rhs}。例如: >
+	:inoremap <expr> . <SID>InsertDot()
+执行时会调用 `s:InsertDot()` 函数，插入其返回值。该函数可检查光标前文本，满足
+条件时启动全能 (omni) 补全。建议优先使用脚本局部函数，避免污染全局命名空间。
+<SID> 的使用可确保正确关联映射所在脚本。
+
+缩写触发时，|v:char| 会被设为触发缩写的字符。可在表达式中用于决定如何扩展
+{lhs}。请勿修改或插入 `v:char`。
+
+希望映射不产生任何输出时，可使表达式返回空串。如果操作后需要 Vim 进入主事件循
+环 (例如用于刷新显示)，可返回 "\<Ignore>"。效果相当于返回空值 (忽略当前按键)，
+但会跳出输入等待循环 (另见 |<Ignore>|)。例如: >
+	func s:OpenPopup()
+	  call popup_create(... 参数 ...)
+	  return "\<Ignore>"
+	endfunc
+	nnoremap <expr> <F3> <SID>OpenPopup()
+
+表达式可能在上一条命令执行完毕前提前求值 (预读输入缓冲区)，造成结果异常。例
+如: >
+	func StoreColumn()
+	  let g:column = col('.')
+	  return 'x'
+	endfunc
+	nnoremap <expr> x StoreColumn()
+	nmap ! f!x
+这里出现的问题执行 `!` 映射时，`x` 对应的表达式会提前运行，导致 `g:colomn` 记
+录了 `f!` 执行之前的光标列，解决方法是，在表达式映射按键前插入 <Ignore>: >
+	nmap ! f!<Ignore>x
+
+在 |Vim9| 脚本中定义映射时，表达式会在该脚本上下文下运行。可以直接访问脚本局部
+项目。
+
+请留心表达式可能的副作用！表达式在字符获取过程中同时执行，容易破坏命令本身逻
+辑。为此，禁止以下行为:
+- 修改缓冲区文本 (|textlock| 激活)
+- 编辑其他缓冲区
+- 执行 |:normal| 命令
+- 允许临时移动光标，但执行后光标位置会自动复原
+如需执行上述操作，请使表达式返回对应指令串，或改用 |<Cmd>| 格式映射。
+
+表达式中可用 |getchar()|，消耗预读内容。映射示例: >
+  inoremap <expr> <C-L> nr2char(getchar())
+  inoremap <expr> <C-L>x "foo"
+按下 CTRL-L 时，不执行任何映射，因为需要先等待下一个按键。键入 'x' 时，采用第
+二个映射，插入 "foo"。而键入其他字符时，采用第一个映射，`getchar()` 获取键入字
+符并按原样输出。
+
+自增列表序号示例: >
+	let counter = 0
+	inoremap <expr> <C-L> ListItem()
+	inoremap <expr> <C-R> ListReset()
+
+	func ListItem()
+	  let g:counter += 1
+	  return g:counter .. '. '
+	endfunc
+
+	func ListReset()
+	  let g:counter = 0
+	  return ''
+	endfunc
+
+CTRL-L 输出新列表项并自动递增编号，CTRL-R 重置计数器，同时返回空串，不插入任何
+内容。
+
+注意 请勿在其他文本前输出以单个字节出现的 0x80。Vim 会将其识别为特殊键，无法正
+常展示。
+
+						*<Cmd>* *:map-cmd*
+特殊标识 <Cmd> 用于定义 "命令映射"，可在不切模式的前提下直接执行命令行命令。以
+往在映射 {rhs} 使用 ": ...<CR>" 的场景，均可替换为 "<Cmd>...<CR>"。
+示例: >
+	noremap x <Cmd>echo mode(1)<CR>
+<
+相较于可视和操作符等待模式下的 `:<C-U>`，或插入模式下的 `<C-O>:`，命令映射的灵
+活性更高，因为命令会在当前模式下直接执行，而不会在结束后切换到普通模式。可视模
+式也受到保护，因而不再借助 |gv| 恢复选区。可在任何模式下直接执行命令行命令 (否
+则需要计时器之类的迂回技巧)。在插入方式执行中途调用 <Cmd> 的示例: >
+	nnoremap <F3> aText <Cmd>echo mode(1)<CR> Added<Esc>
+
+和 <expr> 表达式映射不同，<Cmd> 命令映射没有特殊限制: 执行方式如同执行 (不受限
+的) |autocommand|。
+
+						*<ScriptCmd>*
+特殊标识 <ScriptCmd> 类似 <Cmd>，但命令在映射定义所在脚本的上下文下执行。这对
+|Vim9| 脚本尤其有用。也可正常访问导入项，适合搭配自动载入脚本的插件使用: >
+	vim9script
+	import autoload 'implementation.vim' as impl
+	nnoremap <F4> <ScriptCmd>impl.DoTheWork()<CR>
+
+无论在何处键入 <F4>，都能在映射定义所在脚本上下文下识别导入项 "impl"。示例中使
+用自动载入的导入项，因此只在键入 <F4> 时才会载入 "implmentation.vim" 脚本，定
+义映射阶段不会加载。
+
+如果不使用 <ScriptCmd>，直接写 "s:impl" 会报告 "E121: 未定义的变量"。
+
+备注:
+- <Cmd> 和 <ScriptCmd> 全程不切换模式，不会触发 |CmdlineEnter| 和
+  |CmdlineLeave| 事件，因为无需人工交互过程。
+- 同样原因，<C-R><C-W> 等键码 (|keycodes|) 被解释为普通按键，不触发映射。
+- 执行命令不回显，无需额外提供 <silent>。
+- {rhs} 不触发缩写或其他按键映射，即使命令名开启递归映射也是如此。
+- 可视模式下，可通过 `line('v')` 和 `col('v')` 获取可视选区一端，另一端可用光
+  标位置获取。
+
+							*E1255* *E1136*
+<Cmd> 和 <ScriptCmd> 后的命令必须以 <CR> 终止。过程中不会直接进入
+|Command-line| 模式。要按本义输入 <CR>，可用 |<lt>| 转义。
+
+
+1.3 映 射 与 运 行 模 式				*:map-modes*
+			*mapmode-nvo* *mapmode-n* *mapmode-v* *mapmode-o*
+
+Vim 共分为七种映射，对应不同工作模式:
+- 普通模式: 执行常规编辑命令时生效。
+- 可视模式: 在可视选区上执行命令时生效。
+- 选择模式: 类似可视模式，输入字符会直接替换选中内容。
+- 操作符等待模式: 执行 |d|，|y|，|c| 等操作符后，等待指定作用范围时生效。详见:
+  |omap-info|。
+- 插入模式: 插入用户文本时生效。这类映射也适用于替换模式。
+- 命令行模式: 输入 |:| 或 |/| 等命令时生效。
+- 终端模式: 在 |:terminal| 缓冲区里输入内容时生效。
+
+特例: 在普通模式下为命令输入计数前缀时，不触发 0 的映射。既能支持自定义 0 映
+射，也不会影响带 0 的计数输入。
+
+						*map-overview* *map-modes*
+各类映射命令及其对应模式的总览。更多详情见下。
+     命 令			 模 式 ~
+:map   :noremap  :unmap     普通、可视、选择、操作符等待
+:nmap  :nnoremap :nunmap    普通
+:vmap  :vnoremap :vunmap    可视、选择
+:smap  :snoremap :sunmap    选择
+:xmap  :xnoremap :xunmap    可视
+:omap  :onoremap :ounmap    操作符等待
+:map!  :noremap! :unmap!    插入、命令行
+:imap  :inoremap :iunmap    插入
+:lmap  :lnoremap :lunmap    插入、命令行、语言参数
+:cmap  :cnoremap :cunmap    命令行
+:tmap  :tnoremap :tunmap    终端作业
+
+表格形式:
+							*map-table*
+         模式  | 普通 | 插入 | 命令行 | 可视 | 选择 |操作符等待| 终端 |语言| ~
+命令           +------+------+--------+------+------+----------+------+----+ ~
+[nore]map      | 包含 |  -   |    -   | 包含 | 包含 |   包含   |  -   | -  |
+n[nore]map     | 包含 |  -   |    -   |  -   |  -   |    -     |  -   | -  |
+[nore]map!     |  -   | 包含 |  包含  |  -   |  -   |    -     |  -   | -  |
+i[nore]map     |  -   | 包含 |    -   |  -   |  -   |    -     |  -   | -  |
+c[nore]map     |  -   |  -   |  包含  |  -   |  -   |    -     |  -   | -  |
+v[nore]map     |  -   |  -   |    -   | 包含 | 包含 |    -     |  -   | -  |
+x[nore]map     |  -   |  -   |    -   | 包含 |  -   |    -     |  -   | -  |
+s[nore]map     |  -   |  -   |    -   |  -   | 包含 |    -     |  -   | -  |
+o[nore]map     |  -   |  -   |    -   |  -   |  -   |   包含   |  -   | -  |
+t[nore]map     |  -   |  -   |    -   |  -   |  -   |    -     | 包含 | -  |
+l[nore]map     |  -   | 包含 |  包含  |  -   |  -   |    -     |  -   |包含|
+
+
+    命 令					模 式 ~
+					普通	可视+选择	操作符等待 ~
+:map   :noremap   :unmap   :mapclear	包含	包含		包含
+:nmap  :nnoremap  :nunmap  :nmapclear	包含	-		-
+:vmap  :vnoremap  :vunmap  :vmapclear	-	包含		-
+:omap  :onoremap  :ounmap  :omapclear	-	-		包含
+
+修道院之外也有 :nunmap (译者注: nun，修女)。
+						*mapmode-x* *mapmode-s*
+部分命令可同时用于可视和选择模式，其他命令只能用于其中一种。注意 文档里很多地
+方提到 "可视模式" 时，实际同时兼容可视和选择两种模式。|Select-mode-mapping|
+备注: 在选择模式下，映射可显示字符，容易造成使用混淆。对可显示字符，建议直接区
+分使用 `:xmap` 和 `:smap`。或者在定义可显示字符映射后使用 `:sunmap`。
+
+    命 令				   模 式 ~
+					可视	选择 ~
+:vmap  :vnoremap  :vunmap  :vmapclear	包含	包含
+:xmap  :xnoremap  :xunmap  :xmapclear	包含	-
+:smap  :snoremap  :sunmap  :smapclear	-	包含
+
+			*mapmode-ic* *mapmode-i* *mapmode-c* *mapmode-l*
+部分命令可用时用于插入模式和命令行模式，其他命令只能用于其中一种:
+
+    命 令				      模 式 ~
+					插入	命令行	语言参数 ~
+:map!  :noremap!  :unmap!  :mapclear!	包含	包含	-
+:imap  :inoremap  :iunmap  :imapclear	包含	-	-
+:cmap  :cnoremap  :cunmap  :cmapclear	-	包含	-
+:lmap  :lnoremap  :lunmap  :lmapclear	包含*	包含*	包含*
+
+* 'iminsert' 为 1 时，详见下文 |language-mapping|。
+
+原版 Vi 并未区分普通/可视/操作符等待模式、插入/命令行模式的独立映射。因此
+`:map` 和 `:map!` 命令会同时管理多个模式的映射。Vim 则提供了 `:nmap`、
+`:vmap`、`:omap`、`:cmap` 和 `:imap` 命令，对单一模式单独管理映射。
+
+							*mapmode-t*
+终端映射作用于终端窗口，在向终端作业输入按键时生效。见 |terminal-typing|。
+
+							*omap-info*
+操作符等待映射可自定义移动范围，配合各类操作符使用。基础示例: >
+	:omap { w
+效果是 `y{` 等同于 `yw`，`d{` 等同于 `dw`。
+
+要忽略光标初始位置，自定义选中文本，可使 omap 启动可视模式进行文本选择。
+例如，要操作当前行上的函数名: >
+	onoremap <silent> F :<C-U>normal! 0f(hviw<CR>
+CTRL-U (<C-U>) 用于消除命令行上 Vim 可能自行插入的范围。然后执行普通模式命令，
+寻找首个 '(' 字符，可视选中其前方单词。一般即为函数名。
+
+要使映射作用于普通和可视模式，但排除操作符等待模式，可先用 |:map| 命令一次性定
+义三模式映射，再单独取消操作符等待模式的映射: >
+	:map    xx something-difficult
+	:ounmap xx
+
+同时作用于可视和操作符等待模式、或普通和操作符等待模式的映射也可照此办理。
+
+						*language-mapping*
+":lmap" 定义的语言映射在以下场景下生效:
+- 插入模式
+- 命令行模式
+- 输入搜索模式时
+- |r| 和 |f| 等接受单个字符参数的命令等待按键时
+- |input()| 等待输入行时
+概括来说: 仅在输入缓冲区文本时生效，而执行 Vim 命令时不触发。因此，"语言参数"
+并非一种独立模式，只是对以上场景的统称。
+
+要批量加载整套语言相关映射，最简单的方法是设置 'keymap' 选项。见 |45.5|。
+
+在插入模式和命令行模式下，用 CTRL-^ 命令可关闭语言映射 |i_CTRL-^| |c_CTRL-^|。
+这些命令会修改 'iminsert' 选项值。进入常规命令行 (非模式搜索) 时，语言映射缺省
+关闭，按下 CTRL-^ 才会启用。而进入插入模式和模式搜索时，会恢复它们上次的启用状
+态。 |f| 或 |t| 等接受单个字符参数的命令，也会沿用插入模式上次的启用状态。
+
+语言映射不会应用于映射生成的字符。仅用于原始输入按键。因为定义那些映射时，假定
+语言映射已经生效。
+
+
+1.4 查 看 映 射 列 表						*map-listing*
+
+列出映射时，首列字符用于标识 (可一次包含多个) 模式:
+
+      字 符	模 式	~
+     <Space>	普通、可视、选择、操作符等待
+	n	普通
+	v	可视、选择
+	s	选择
+	x	可视
+	o	操作符等待
+	!	插入、命令行
+	i	插入
+	l	语言映射 (插入、命令行和其他语言参数场景)
+	c	命令行
+	t	终端作业
+
+{rhs} 前方还可能显示一个特殊标记:
+	*	不可重映射
+	&	仅允许调用脚本局部映射
+	@	缓冲区局部映射
+
+从 {lhs} 后的首个非空字符到行尾 (或 '|') 都算作 {rhs} 内容。因此 {rhs} 允许以
+空白结尾。
+
+注意: 使用可视模式映射时，可用 |'<| 位置标记，代表当前缓冲区中最近一次可视选区
+的起点 |'<|。
+
+可搭配 |:filter| 命令筛选映射。模式匹配 {lhs} 和 {rhs} 原始内容。
+
+映射列出期间，无法同时新增或清除映射 (如在定时器回调中操作)。 *E1309*
+
+							*:map-verbose*
+'verbose' 非零时，会在首行显示当前识别并使用的 'keyprotocol' 值。每条映射会额
+外显示最后一次定义的文件位置。例如: >
+
+	:verbose map <C-W>*
+	Kitty 键盘协议: 已清除
+	n  <C-W>*      * <C-W><C-S>*
+		最近修改于 /home/abcd/.vimrc
+
+详见 |:verbose-cmd|。
+
+
+1.5 特 殊 键 映 射					*:map-special-keys*
+
+映射特殊键有三种方式:
+1. 兼容 Vi 方式: 使用原始键码。多数特殊键编码以 <Esc> 开头。这种方式定义映射
+   时，先输入 ":map "，再按 CTRL-V，然后按下目标功能键。注意如果该键码已在终端
+   能力库 (t_ 系列选项) 里定义，被自动转换为内部编码，此时相当于第二种方式
+   ('cpoptions' 里包含 'k' 标志位时除外 |cpo-k|)。
+2. 使用特殊键的内部编码。这种方式定义映射时，先按 CTRL-K，按下目标功能键，也可
+   使用 "#1"、"#2"、…、"#9"、"#0"、"<Up>"、"<S-Down>"、"<S-F7>" 等形式 (按键记
+   法参见键表 |key-notation| 可用其中从 <Up> 开始的键)。前十个功能键支持两种写
+   法: "#2" 和 "<F2>" 都代表功能键 F2。"#0" 代表由 |t_f10| 定义的功能键 10，部
+   分键盘上也代表 F0。'cpoptions' 里包含 '<' 标志位时 (|cpo-<|) 无法使用 <> 记
+   法。
+3. 使用 <t_xx> 记法引用终端能力数据库 (termcap) 条目，"xx" 为条目名。可引用所
+   有字符串条目。例如: >
+     :map <t_F3> G
+<  将功能键 F13 映射为 "G"。同样，'cpoptions' 里包含 '<' 标志位时 (|cpo-<|) 无
+   法使用此方式。
+
+二、三两种方式的优点是可跨终端直接使用 (无论何种终端，功能键都会被统一解析为相
+同内部编码，也称为实际键码。前提是终端能力库必须正确配置且映射保持一致)。
+
+细 节: Vim 先判断输入序列是否存在映射 (方式一)。如果无匹配，尝试根据原始键码解
+析为终端条目 (见 |terminal-options|)。解析成功则转换成内部编码，并再次检索内部
+编码的映射 (方式二或三)。导出脚本文件保存的键码 (见 |-w|) 取决于识别的内容。终
+端原始键码被映射时，保存原始键码本身；否则，当识别为合法终端条目时，保存对应的
+内部编码。
+
+
+1.6 特 殊 字 符						*:map-special-chars*
+					*map_backslash* *map-backslash*
+注意 作为用于映射和缩写的转义符，这里仅提及 CTRL-V。当 'cpoptions' 排除 'B' 时
+(并非缺省)，反斜杠也可充当转义符，可完整使用 <> 记法 |<>| 输入特殊键，但不能用
+"<C-V>" 记法代替实际 CTRL-V 键以转义后续内容。
+
+要映射反斜杠、或在 {rhs} 中按本义使用反斜杠，可用特殊字符序列 "<Bslash>"。使用
+嵌套映射时避免双倍反斜杠。
+
+						*map_CTRL-C* *map-CTRL-C*
+可映射 CTRL-C，但仅当 Vim 在按键等待状态时生效，Vim 执行繁忙时，CTRL-C 会中断
+当前命令，但不会触发映射。
+在 MS-Windows GUI 版本上，CTRL-C 可被正常映射，主要用于剪贴板复制功能。如需中
+断命令功能，可改用 CTRL-Break。
+
+					*map_space_in_lhs* *map-space_in_lhs*
+要映射空格，需加上前导 CTRL-V (实际在每个空格前要按 CTRL-V 两次)。
+
+					*map_space_in_rhs* *map-space_in_rhs*
+需要 {rhs} 以空格开头时，推荐使用 "<Space>"。要与 Vi 完全兼容 (但可读性较差)，
+不用 |<>| 记法，而是加上前导 CTRL-V (实际要按 CTRL-V 两次)。
+					*map_empty_rhs* *map-empty-rhs*
+要指定空 {rhs} (即忽略映射按键)，可使用单独的 CTRL-V (实际要按 CTRL-V 两次)。
+但该写法无法用于 vimrc 文件。
+
+							*<Nop>*
+实现空映射更简便的方法是指定 {rhs} 为 "<Nop>"。需支持 |<>| 记法 (排除
+|cpo-<|)。例如要禁用功能键 F8:
+	:map  <F8>  <Nop>
+	:map! <F8>  <Nop>
+
+							*map-multibyte*
+支持多字节字符整体映射，但不能仅映射首个字节。避免出现以下场景中的问题: >
+	:set encoding=latin1
+	:imap <M-C> foo
+	:set encoding=utf-8
+在 latin1 编码中，定义 <M-C> 映射，该键此时对应 0xc3 字节。切换到 UTF-8 编码
+后，字符 á (编码为 0xe1，在老式终端可用 <M-a> 输入) 对应双字节 UTF-8 编码 0xc3
+0xa1。如果允许单字节映射，0xc3 字节就会误触发映射，导致无法正常输入 á 字符。
+
+					*<Leader>* *mapleader*
+映射按键时可用特殊前缀 "<Leader>"，该前缀会用 `g:mapleader` 变量替换。全局变量
+未设置或为空时，默认使用反斜杠，例如: >
+	map <Leader>A  oanother line<Esc>
+默认相当于: >
+	map \A  oanother line<Esc>
+设置新引导键 (老式脚本): >
+	let mapleader = ","
+或 (Vim9 脚本): >
+	g:mapleader = ","
+后定义该映射时，则等价于: >
+	map ,A  oanother line<Esc>
+
+注意 `g:mapleader` 的值在映射定义时就已确定。后续对该变量的修改不会影响已定义
+映射。
+
+					*<LocalLeader>* *maplocalleader*
+<LocalLeader> 类似 <Leader>，但读取 `g:maplocalleader` 变量，而非
+`g:mapleader` 变量 (缺省值也是反斜杠)，专用于缓冲区局部映射，例如: >
+      :map <buffer> <LocalLeader>A  oanother line<Esc>
+<
+全局插件适用 <Leader>，而文件类型插件适用 <LocalLeader>。`g:mapleader` 和
+`g:maplocalleader` 可用相同值。但建议区分，降低全局映射和文件类型映射的冲突概
+率。例如保持 `g:mapleader` 默认值反斜杠，而将 `g:maplocalleader` 设为下划线。
+
+							*map-<SID>*
+特殊键 "<SID>" 可定义脚本局部映射。详见 |<SID>|。
+
+							*<Plug>*
+特殊键 "<Plug>" 可定义内部中间映射，该序列不会被键盘输入匹配。是插件开发中的常
+用写法。详见 |using-<Plug>|。
+
+							*<MouseMove>*
+特殊键 "<MouseMove>" 可被映射，用于捕获鼠标移动事件。需先开启 'mousemoveevent'
+才能使用。目前仅支持 GUI 模式。可搭配 |getmousepos()| 函数获取鼠标位置。
+
+							*<Char>* *<Char->*
+要通过十进制、八进制或十六进制编码指定映射字符，可用 <Char> 形式:
+	<Char-123>	字符 123
+	<Char-033>	字符 27 (八进制 033)
+	<Char-0x7f>	字符 127 (十六进制 0x7f)
+	<S-Char-114>    字符 114 ('r') 带 Shift，对应 'R'
+该写法多用于在 'keymap' 文件中指定多字节字符。此处不区分大小写。
+
+							*map-comments*
+映射系列命令不能直接后置注释，因为 '"' 字符会被视作 {lhs} 或 {rhs} 的一部分。
+但可用 "|" 另起空命令再加注释的变通方案。
+
+							*map_bar* *map-bar*
+因为 '|' 用于分隔映射命令和后续命令，要在 {rhs} 中包含 '|'，有三种写法:
+   写法	     生效条件				示例	~
+   <Bar>     'cpoptions' 里不含 '<' (|cpo-<|)	:map _l :!ls <Bar> more^M
+   \|	     'cpoptions' 里不含 'b' (|cpo-b|)	:map _l :!ls \| more^M
+   ^V|	     全版本兼容，包括 Vim 和 Vi		:map _l :!ls ^V| more^M
+
+(这里 ^V 表示 CTRL-V；实际必须按 CTRL-V 键两次；不能使用 |<>| 记法 "<C-V>")。
+
+'cpoptions' 的 Vim 缺省设置确保三种方式都可正常工作。
+
+'cpoptions' 里包含 'b' 时，"\|" 会被解析为映射结束，后跟新命令。这是 Vi 兼容行
+为，但与其他命令相比显得不太合理。
+
+						*map_return* *map-return*
+映射中包含 Ex 命令时，必须添加行尾结束符才能执行，推荐使用 <CR>  (见 |<>|)。
+例如: >
+   :map  _ls  :!ls -l %:S<CR>:echo "输出完毕"<CR>
+
+在插入模式、命令行模式输入特殊字符时，可先按 CTRL-V 屏蔽后续字符的映射。打开
+'paste' 选项后，也会自动屏蔽插入模式映射。
+
+							*map-error*
+注意 如果映射执行过程中遇到错误 (会给出错误信息，或触发蜂鸣)，后续内容会停止执
+行。这是 Vi 兼容行为。
+
+注意 以下命令 (用作参数) 的第二个字符: |@|、|z|、|Z|、|t|、|T|、|f|、|F|、
+|[|、|]|、|r|、|m|、|'|、|`|、|quote|、|v| 和 CTRL-X 不会应用映射。
+这是为了所有命名寄存器以及位置标记都能正常使用，即使主命令被映射为其他功能，也
+是如此 (译者注: 部分接受文本字符为参数的命令适用 |language-mapping|)。
+
+
+1.7 选 择 合 适 映 射 按 键				*map-which-keys*
+
+自定义映射时，需选择合适的按键用于映射。尽量避免 Vim 原生功能键。否则会覆盖原
+有命令。推荐以下方案:
+- 功能键 <F2>、<F3> 及组合键 <S-F1>、<S-F2> 等。注意 <F1> 已用作帮助命令。
+- 带 Alt 或 Meta 的组合键。部分键盘还可使用带重音的字符。|:map-alt-keys|
+- 以 '_' 或 ',' 搭配其他字符。|_| 和 |,| 虽然是 Vim 原生命令，但使用频率很低。
+- 已有同义的快速键，如 CTRL-P 和 CTRL-N。可追加额外字符拓展更多映射。
+- <Leader> 键加其他按键 (序列)。脚本中尤其常用。|mapleader|
+
+查阅 |index| ，查看未用按键，确保不会覆盖内置功能。也可执行 ":help {key}^D" 来
+判断某个按键是否已有内置功能。({key} 指定待定键，^D 代表 CTRL-D)。
+
+
+1.8 示 例						*map-examples*
+
+以下示例按本义输入，如 "<CR>" 需要输入四个字符；为此 'cpoptions' 里不应包含
+'<' 标志位 (|cpo-<|)。 >
+
+   :map <F3>  o#include
+   :map <M-g> /foo<CR>cwbar<Esc>
+   :map _x    d/END/e<CR>
+   :map! qq   quadrillion questions
+
+计数相乘
+
+激活映射前输入计数时，该数值会与 {lhs} (译者注: 应为 {rhs}) 内容直接拼接，而非
+相乘。例如，对于以下映射: >
+   :map <F4>  3w
+输入 2<F4> 等价于执行 "23w" (正向 23 个单词)，而不是 2 * 3 个单词。要实现计数
+相乘效果，可用表达式寄存器: >
+   :map <F4>  @='3w'<CR>
+引号内为表达式内容。|@=|
+
+
+1.9 映 射 执 行 规 则					*map-typing*
+
+Vim 会逐字符比对输入内容和已定义的映射序列。如果只有部分匹配，会等待后续字符输
+入，直到完全匹配或确认无对应映射。例如: 先定义 `map! "qq"`，输入完第一个 'q'
+后，不会立刻显示，Vim 会等待下一个字符，判断是否为另一个 'q'。打开 'timeout'
+选项 (缺省) 时，Vim 最长等待一秒 (或 'timeoutlen' 指定值)。超时则直接判定为单
+个 'q'，无需映射。如果输入速度慢、终端响应卡顿，可关闭 'timeout' 选项。并按需
+打开 'ttimeout' 选项。
+
+							*map-precedence*
+缓冲区局部映射 (|:map-<buffer>| 所定义的) 优先于全局映射，即同名映射优先使用缓
+冲区局部映射。带 <nowait> 的映射在序列完全匹配时立即执行，不会等待更长的同前缀
+映射。示例: >
+    :map <buffer> <nowait> \a   :echo "Local \a"<CR>
+    :map                   \abc :echo "Global \abc"<CR>
+键入 \a 后会直接触发该缓冲区局部映射。不会等待后续字符去匹配 \abc。
+
+							*map-keys-fails*
+在若干情况下，特殊键码无法正常识别，导致映射失效:
+- 终端只读取到部分键码，常为首字符。常见下部分 Unix 版本的 xterm。
+- 特殊键出现在其他映射字符 (或字符序列) 之后。如 "<F1><F1>" 或 "g<F1>"
+  (译者注: 考虑 "<F1><F1>" 映射，读取第二个 <F1> 部分键码后，Vim 可能会判断超
+  时，导致映射失败)。
+
+有几种解决方法:
+
+- 从 'cpoptions' 中排除 'K' 标志位 (|cpo-K|)。让 Vim 完整读取功能键的全部键
+  码。
+- 虽然缺省 <xF1> 被映射到 <F1>，<xF2> 被映射到 <F2> 等，但在映射序列后半部使用
+  <F1> 到 <F4> 时，<xF1> 等按键不会被识别。要确认使用正确 <F1> 到 <F4>
+  的键码: >
+	:set <F1>=<先按 CTRL-V><再按 F1>
+< 前面的 <F1> 为四字符。"=" 号后面的部分必须实际输入按键，不能用 <> 记法。
+
+最后一种解决方法是在映射中直接使用原始键码输入第二个特殊键: >
+	:map <F1><Esc>OP :echo "yes"<CR>
+此处用 <> 记法，不要按真正 <Esc> 键，Vim 自动将原始键码在内部转换为 <F1>。
+
+长按 ALT 或 Meta 时，部分终端会加上 ESC 前缀，而非设置第 8 位，造成 Alt 组合键
+映射异常。详见 |:map-alt-keys|。
+
+						*recursive_mapping*
+映射右手边 {rhs} 中包含左手边 {lhs} 时，就会形成递归映射。按下 {lhs} 时，会展
+开为 {rhs}。其中再次出现的 {lhs} 会继续递归展开，依此类推。可能造成无限循环，
+只能通过触发错误终止。Vim 发布中提供的迷宫求解宏示例 (runtime/macros/maze/) 利
+用了此特性，可供参考。有一个特例: {rhs} 以 {lhs} 开始时，{lhs} 不会被再次映射
+(这与 Vi 兼容)。
+示例: >
+   :map ab abcd
+将执行 |a| 命令，在光标后插入文本 "bcd"。{rhs} 中的 "ab" 不会再次触发映射。
+
+要交换两个键的原生功能，必须使用 |:noremap| 命令。例如: >
+   :noremap k j
+   :noremap j k
+实现上下光标键交换。
+
+使用常规 |:map| 命令且打开 'remap' 选项 (缺省) 时，映射会反复进行，直到没有可
+映射的文本为止。例如: >
+   :map x y
+   :map y x
+Vim 将互相反复替换 x 和 y。达到 'maxmapdepth' (缺省为 1000 层) 后，Vim 会报错
+"递归映射"。
+
+							*:map-undo*
+映射内容中包含一个撤销命令时，文本会恢复到映射执行前的状态。兼容原版 Vi 行为，
+但多于一个撤销命令时，原版 Vi 执行两次撤销的效果 (见 |cpo-u|) 是回到首次撤销前
+的文本状态，这没有实际意义。而 Vim 增强行为则会撤销两次更改。
+
+
+1.10 ALT 键 映 射					*:map-alt-keys*
+
+可用 <A-k> 记法，提高可读性。注意 <A-k> 和 <A-K> 是不同按键 (译者注: 与
+|CTRL-{char}| 不同)，后者使用大写字母。而 <A-K> 等价于 <A-S-K>。修饰符 "A" 也
+可用 "M" 代替。如果键盘配有独立 Meta 修饰键，请参见 |:map-meta-keys|。
+
+GUI 上，Vim 自行处理 Alt 键，Alt 组合键映射都可正常生效。但在终端上，终端会输
+入字符序列，Vim 获取后必须自动解析是否按下了 Alt 键。
+
+终端支持并开启扩展修饰键模式后，Vim 可识别更多组合键，见下 |modifyOtherKeys|。
+Kitty 键盘协议也有类似效果，见 |kitty-keyboard-protocol|。
+
+Vim 缺省假设按下 ALT 键会将输入字符的第 8 位置 1。多数传统主流终端都是如此，包
+括 xterm、aterm 和 rxvt。如果 <A-k> 映射失效，可能原因是终端使用前置 ESC 转义
+的方式处理 Alt；但用户也可手动输入 ESC 后跟其他字符，给出完全相同的字符序列
+(仅能检查字符间隔延迟区分，并不稳定可靠)。
+
+部分当前主流终端，如 gnome-terminal 和 konsole，均使用 ESC 前缀，且无法切换为
+第 8 位置位方式。xterm 缺省支持 8 位模式。aterm 和 rxvt 也可通过 "--meta8" 启
+动参数切换到 8 位模式。也可修改相应终端资源，在两种模式间切换:
+"metaSendsEscape"、"eightBitInput" 和 "eightBitOutput"。
+
+Linux 控制台上，可用 "setmetamode" 命令切换 Alt 处理模式。要小心这可能影响其他
+期待 ESC 前缀方式的程序。如需 bash 外壳正常识别 Meta 组合键，需将 readline 的
+"convert-meta" 选项设为 "on" (代表将输入的 8 位置位字符转换为 ESC 前缀模式。这
+是 readline 缺省，但特定系统可能会覆盖)。为此，在 ~/.inputrc 文件中写入: >
+
+	set convert-meta on
+
+新建该文件时，建议首行引入系统全局配置 (如有): >
+
+	$include /etc/inputrc
+
+开启后输入元音变音 (umlaut) 等特殊字符可能异常，此时输入前加 CTRL-V 即可。
+
+据用户报告，UTF-8 locale 环境下，convert-meta 存在兼容性问题。xterm 等终端可通
+过按 Ctrl-鼠标左键弹出的 "Main Options" 菜单中随时切换 "metaSendsEscape" 资
+源；如需 Vim 关闭 ESC 前缀方式、但向外部程序发送 ESC 前缀，这是最后应急手段。
+
+
+1.11 META 键 映 射					*:map-meta-keys*
+
+Meta 修饰键映射逻辑和 Alt 几乎一致。其具体对应的实体键取决于用户键盘和配置。
+
+注意 <M-a> 映射并非用于 Meta 组合键，而是 Alt 组合键。此命名极易引起混淆！该设
+计为兼容旧版，已无法更正。
+
+Meta 组合键使用的正确修饰符为 "T"。映射插入模式下 Meta-b 的示例: >
+	:imap <T-b> terrible
+
+
+1.12 SUPER 或 COMMAND 键 映 射		     *:map-super-keys* *:map-cmd-key*
+
+仅 GUI 模式 (|gui_running| 为 1) 支持 Super / Command 修饰键。
+Mac OS 上的 MacVim 对应 Command 键，而 Linux 上的 GTK GUI 对应 Super 键。
+Super / Command 组合键使用 "D" 修饰符。
+
+映射插入模式下 Command-b 的示例: >
+	:imap <D-b> barritone
+
+1.13 扩 展 修 饰 键 模 式 映 射			*modifyOtherKeys*
+
+xterm 和部分其他终端可开启扩展修饰键 (modifyOtherKeys) 模式，带修饰符的按键会
+发送专用区分转义序列。Vim 通过识别这些代码，可以区分 CTRL-H 和退格键 (传统二者
+均输出字符 8)、<Tab> 和 CTRL-I 等原本无法独立绑定的组合键。
+
+xterm 在内置终端能力库中缺省已支持此扩展模式。如果缺省未提供支持，可在 vimrc
+中打开: >
+      let &t_TI = "\<Esc>[>4;2m"
+      let &t_TE = "\<Esc>[>4;m"
+
+从而设置 2 级扩展模式。注意 Vim 不支持 1 级扩展模式。部分老旧终端不支持 2 级，
+Vim 无法正确识别其发送的键码。
+
+万一扩展修饰键模式造成问题，可如此关闭: >
+      let &t_TI = ""
+      let &t_TE = ""
+修改不会立即生效。要在同一 Vim 会话中刷新，可执行一条外壳命令，如: `!ls`。要永
+久生效，加入 |vimrc| 并重启 Vim。
+
+此模式生效时，可独立映射 <C-[> 和 <C-{>: >
+	imap <C-[> [[[
+	imap <C-{> {{{
+如果此模式未生效，<C-[>、<C-{> 都会被识别为 Esc。注意这里用 <C-{> 而非
+<C-S-[> 或 <C-S-{>。这适用于绝大多数键盘。类似地，用 <C-}> 而非 <C-S-]> 或
+<C-S-}>，用 <C-|> 而非 <C-S-\> 或 <C-S-|>。注意 '|' 在映射中有特殊含义，见
+|map-bar|。
+
+警告: 如果自定义映射 <C-[>，会干扰所有以 Esc 开头的终端按键序列识别。该映射必
+须出现在所有其他映射_之后_。
+
+在 xterm 377 及以上版本上，Vim 可通过 't_RK' 终端能力项，主动查询此模式的当前
+状态。根据是否有合适应答自动判断是否已打开 2 级扩展模式，并相应处理映射。
+
+xterm 377 版之前，Vim 会自动识别由此模式生成的转义序列，据此判断该模式是否已打
+开。要确认 Vim 是否识别成功，可执行 `:verbose map`，查看首行是否有提示
+"检测到 modifyOtherKeys: true"。
+
+自动检测机制依赖于 "<1b>[27;" 开始的标准转义码。如果自定义 *formatOtherKeys*
+资源，终端会改用非标准格式，此时 Vim 将无法识别，所以请勿设置该资源。
+
+一个此模式的已知副作用是在插入模式下执行 CTRL-V 键后会插入特殊键的标准转义序
+列 (即不开启此模式时的原始键码) 。可用以下方式快速校验是否开启扩展修饰键模式:
+在插入模式下，按 CTRL-SHIFT-V CTRL-V，如果输出单个字节，则模式关闭，如果输出
+<1b>[27;5;118~ 完整转义序列，则模式已开启。
+
+注意 xterm 376 及更早版本有个漏洞，Shift-Esc 只会发送普通 Esc 键码，Shift 修饰
+符丢失，无法区分两者。
+
+关闭 'esckeys' 选项后，插入模式下会自动屏蔽扩展修饰键模式，否则带修饰符的按键
+会误触发 <Esc>，退出插入模式。
+
+
+1.14 Kitty 键 盘 协 议 映 射			 *kitty-keyboard-protocol*
+
+'term' 值包含 "kitty" 时，Vim 会自动发送特定转义序列打开 Kitty 键盘协议。终端
+名到协议的对应关系可用 'keyprotocol' 选项改变。
+
+和扩展修饰键模式类似，此协议能区分更多带修饰符的组合键。此协议还额外为 Esc 键
+发送专属转义序列，这样，Vim 就无需依靠超时机制区分实际 Esc 键和转义序列的起始
+字符。
+
+Vim 会通过终端状态查询 (相关配置在 |t_TI| 终端能力项中定义) 的响应，自动检测
+Kitty 键盘协议是否正确启用。要确认 Vim 是否识别成功，可执行: >
+	:verbose map
+此时首行会提示 "Kitty 键盘协议: {value}"。{value} 可取值及其含义为:
+	未知		尚未收到终端状态响应
+	关闭		协议未启用
+	开启		协议已启用
+	已禁用		协议曾启用，已通过 't_TE' 关闭
+	已清除		协议已通过 't_TE' 关闭，此前启用状态未知
+
+
+1.15 映 射 操 作 符					*:map-operator*
+
+操作符在 {motion} (动作) 之前指定。要自定义操作符，需要定义映射，其中先设置
+'operatorfunc' 选项，然后调用 |g@| 操作符。用户输入 {motion} 后，会自动执行绑
+定的函数。
+
+							*g@* *E774* *E775*
+g@{motion}		触发 'operatorfunc' 选项设置的函数。函数调用时，|'[|
+			位置标记位于 {motion} 覆盖选区的开头，而 |']| 位置标记
+			位于选区的结束字符。
+			函数接受一个字符串参数，代表选区类型:
+			    "line"	|linewise| 行级选区
+			    "char"	|characterwise| 字符级选区
+			    "block"	|blockwise-visual| 列块级选区
+			可强制指定选区类型，见 |force-motion|。
+			{仅当编译时加入 |+eval| 特性才有效}
+
+以下是用 <F4> 来计算选区内空格数目的示例: >
+
+	nnoremap <expr> <F4> CountSpaces()
+	xnoremap <expr> <F4> CountSpaces()
+	" 按两次 <F4> 可在行上操作
+	nnoremap <expr> <F4><F4> CountSpaces() .. '_'
+
+	function CountSpaces(context = {}, type = '') abort
+	  if a:type == ''
+	    let context = #{
+	      \ dot_command: v:false,
+	      \ extend_block: '',
+	      \ virtualedit: [&l:virtualedit, &g:virtualedit],
+	      \ }
+	    let &operatorfunc = function('CountSpaces', [context])
+	    set virtualedit=block
+	    return 'g@'
+	  endif
+
+	  let save = #{
+	    \ clipboard: &clipboard,
+	    \ selection: &selection,
+	    \ virtualedit: [&l:virtualedit, &g:virtualedit],
+	    \ register: getreginfo('"'),
+	    \ visual_marks: [getpos("'<"), getpos("'>")],
+	    \ }
+
+	  try
+	    set clipboard= selection=inclusive virtualedit=
+	    let commands = #{
+	      \ line: "'[V']",
+	      \ char: "`[v`]",
+	      \ block: "`[\<C-V>`]",
+	      \ }[a:type]
+	    let [_, _, col, off] = getpos("']")
+	    if off != 0
+	      let vcol = getline("'[")->strpart(0, col + off)->strdisplaywidth()
+	      if vcol >= [line("'["), '$']->virtcol() - 1
+	        let a:context.extend_block = '$'
+	      else
+	        let a:context.extend_block = vcol .. '|'
+	      endif
+	    endif
+	    if a:context.extend_block != ''
+	      let commands ..= 'oO' .. a:context.extend_block
+	    endif
+	    let commands ..= 'y'
+	    execute 'silent noautocmd keepjumps normal! ' .. commands
+	    echomsg getreg('"')->count(' ')
+	  finally
+	    call setreg('"', save.register)
+	    call setpos("'<", save.visual_marks[0])
+	    call setpos("'>", save.visual_marks[1])
+	    let &clipboard = save.clipboard
+	    let &selection = save.selection
+	    let [&l:virtualedit, &g:virtualedit] = get(a:context.dot_command ? save : a:context, 'virtualedit')
+	    let a:context.dot_command = v:true
+	  endtry
+	endfunction
+
+表达式 <expr> 映射可以读取前缀计数和寄存器内容。同时全程不会唤起命令行，也就不
+会触发 CmdlineEnter 和 CmdlineLeave 自动命令。
+
+注意 将 'selection' 选项临时设为 "inclusive"，方便通过 '[ 到 '] 位置标记抽出可
+视选区，精准复制目标文本。
+
+也要 注意 'clipboard' 选项值可能包含 "unnamed" 或 "unnamedplus"。临时清空该选
+项可以防止覆盖 `"*` 或 `"+` 剪贴板寄存器。
+
+|mode()| 函数返回操作符执行完成后的模式状态。
+
+下例使用匿名函数，实现普通模式自定义操作符，给选中行内文本加引号包围: >
+
+	nnoremap <F4> <Cmd>let &opfunc='{t ->
+				\ getline(".")
+				\ ->split("\\zs")
+				\ ->insert("\"", col("'']"))
+				\ ->insert("\"", col("''[") - 1)
+				\ ->join("")
+				\ ->setline(".")}'<CR>g@
+(译者注: 不适用于多字符文本，也不适用于跨行选区)
+
+==============================================================================
+2. 缩写			*abbreviations* *Abbreviations*
+
+缩写功能可用于插入模式，替换模式和命令行模式。输入缩写词时，会被自动展开为预设
+文本。常用于简化高频长文本输入、或自动修正常见拼写错误。
+示例: >
+
+	:iab ms Microsoft
+	:iab tihs this
+
+缩写有三种类型:
+
+full-id	  "full-id" 全关键字型。完全由关键字字符组成 (字母和 'iskeyword' 选项
+	  字符)。最常用。
+
+	  示例: "foo"，"g3"，"-1"
+
+end-id	  "end-id" 尾关键字型。仅末尾是关键字字符，其余字符均非关键字字符。
+
+	  示例: "#i"，"..f"，"$/7"
+
+non-id	  "non-id" 尾非关键字型。末尾非关键字字符，其余字符为任意非空白字符。
+	  {Vi 不支持这种类型}
+
+	  示例: "def#"，"4/7$"
+
+无法用作缩写的字符串: "a.b"，"#def"，"a b"，"_$r"
+
+仅在输入非关键字字符时才会识别并展开缩写，也包括退出插入模式的 <Esc> 或结束命
+令行的 <CR> 键。触发字符会在展开后的文本后插入。字符 <C-]> 是特例，它仅展开缩
+写，但不追加任何字符。
+
+例如: >
+   :ab hh	hello
+<	    "hh<Space>" 被展开为 "hello<Space>"
+	    "hh<C-]>"   被展开为 "hello"
+
+基本规则是光标前的字符序列必需完整匹配缩写词。每种类型还有附加前置检验规则:
+
+full-id	  缩写词左侧必须是非关键字字符，或位于行首或插入起始位置。特例: 单字符
+	  缩写词如果左侧为非关键字非空白字符，不会被识别。
+	  命令行上忽略 "'<,'>" (或类似标记) 范围标记，视作命令行从标记后开始。
+
+end-id	  缩写词左侧必须是关键字或空白字符，或位于行首或插入起始位置。
+
+non-id	  缩写词左侧必须是空白字符，或位于行首或插入起始位置。
+
+(译者注: 一般而言，左侧字符必须与缩写词首字符类型不同)
+
+例如: ({光标} 代表输入触发用的非关键字字符的位置) >
+   :ab foo   four old otters
+<		" foo{光标}"	展开为 " four old otters"
+		" foobar{光标}"	不展开
+		"barfoo{光标}"	不展开
+>
+   :ab #i #include
+<		"#i{光标}"	展开为 "#include"
+		">#i{光标}"	不展开
+>
+   :ab ;; <endofline>
+<		"test;;{光标}"	不展开
+		"test ;;{光标}"	展开为 "test <endofline>"
+
+插入模式下，要临时避免缩写: 在触发缩写的字符前输入 CTRL-V，如 CTRL-V <Space>。
+或者先输入部分缩写词，按 <Esc> 退出插入模式，再用 |a| 重新进入输入剩余部分。
+
+命令行模式下，要临时避免缩写: 在缩写中间任意输入 CTRL-V 两次即可阻止展开。这是
+因为在普通字符前单独加一个 CTRL-V 大多会被忽略 (译者注: 注意并非全部会忽略)。
+
+可在缩写展开后自动移动光标: >
+   :iab if if ()<Left>
+如果 'cpoptions' 里包含 '<' 标志位 (|cpo-<|)，|<>| 记法会失效。
+
+还可完成更复杂的功能。要丢弃缩写后触发缩写的空格: >
+   func Eatchar(pat)
+      let c = nr2char(getchar(0))
+      return (c =~ a:pat) ? '' : c
+   endfunc
+   iabbr <silent> if if ()<Left><C-R>=Eatchar('\s')<CR>
+
+Vim 不提供内置缩写。
+
+缩写不会递归展开。如 `:ab f f-o-o` 可正常使用。但缩写可以被映射触发。
+{Vi 部分老旧版本支持递归缩写，原因不明}
+
+'paste' 选项打开时，所有缩写自动失效。
+
+				*:abbreviate-local* *:abbreviate-<buffer>*
+和映射一样，缩写可仅对当前缓冲区生效。多用于 |filetype-plugin| 文件类型插件。
+C 语言插件示例: >
+	:abb <buffer> FF  for (i = 0; i < ; ++i)
+<
+						*:ab* *:abbreviate*
+:ab[breviate]		列出所有缩写。首列字符用于标识缩写的作用范围: 'i' 仅插
+			入模式，'c' 仅命令行模式，'!' 两种模式都支持。与映射列
+			表的格式一致，见 |map-listing|。
+
+						*:abbreviate-verbose*
+'verbose' 非零时，列出缩写的同时会附带显示该缩写最后定义的文件路径。例如: >
+
+	:verbose abbreviate
+	!  teh		 the
+		最近修改于 /home/abcd/vim/abbr.vim
+
+详见 |:verbose-cmd|。
+
+:ab[breviate] {lhs}	列出所有以 {lhs} 开头的缩写。
+			命令行自身也会触发缩写，输入 {lhs} 时需插入 CTRL-V (实
+			际要按两次 <C-V>) 防止提前展开。
+
+:ab[breviate] [<expr>] [<buffer>] {lhs} {rhs}
+			将 {lhs} 缩写为 {rhs}。该缩写已存在时，直接覆盖旧内
+			容。{rhs} 可包含空格。
+			可选 <expr> 参数用于表达式缩写，见 |:map-<expr>|。
+			可选 <buffer> 参数用于局部缩写，见 |:map-<buffer>|。
+
+						*:una* *:unabbreviate*
+:una[bbreviate] [<buffer>] {lhs}
+			删除名为 {lhs} 的缩写。如果找不到，会删除 {rhs} 匹配该
+			缩写名的缩写。方便根据展开后的内容反向删除对应缩写。
+			输入 {lhs} 时需插入 CTRL-V (实际要按两次) 防止命令行提
+			前展开。
+
+						*:norea* *:noreabbrev*
+:norea[bbrev] [<expr>] [<buffer>] [lhs] [rhs]
+			类似 |:ab|，但 {rhs} 不会触发映射。
+
+						*:ca* *:cab* *:cabbrev*
+:ca[bbrev] [<expr>] [<buffer>] [lhs] [rhs]
+			类似 |:ab|，但仅用于命令行模式。
+
+						*:cuna* *:cunabbrev*
+:cuna[bbrev] {lhs}	类似 |:una|，但仅用于命令行模式。
+
+						*:cnorea* *:cnoreabbrev*
+:cnorea[bbrev] [<expr>] [<buffer>] [lhs] [rhs]
+			类似 |:ab|，但仅用于命令行模式且 {rhs} 不会触发映射。
+
+						*:ia* *:iabbrev*
+:ia[bbrev] [<expr>] [<buffer>] [lhs] [rhs]
+			类似 |:ab|，但仅用于插入模式。
+
+						*:iuna* *:iunabbrev*
+:iuna[bbrev] {lhs}	类似 |:una|，但仅用于插入模式。
+
+						*:inorea* *:inoreabbrev*
+:inorea[bbrev] [<expr>] [<buffer>] [lhs] [rhs]
+			类似 |:ab|，但仅用于插入模式且 {rhs} 不会触发映射。
+
+							*:abc* *:abclear*
+:abc[lear] [<buffer>]	清空所有缩写。
+
+							*:iabc* *:iabclear*
+:iabc[lear] [<buffer>]	仅清空插入模式缩写。
+
+							*:cabc* *:cabclear*
+:cabc[lear] [<buffer>]	仅清空命令行模式缩写。
+
+							*using_CTRL-V*
+缩写的 {rhs} 中可以使用特殊字符。可用 CTRL-V 转义多数不可显示字符的特殊含义。
+需要的 CTRL-V 数目取决于缩写的输入方式。此处讨论同样适用于映射。下面用示例完整
+说明。
+
+要将 "esc" 缩写展开为 <Esc> 字符，可在 Vim 中用以下方式输入 |:ab| 命令: (文中
+^V 代表按 CTRL-V，而 ^[ 代表按 <Esc>)
+
+依次按下:	ab esc ^V^V^V^V^V^[
+
+	^V 会转义所有键盘输入键，所以第一、三、五个 ^V 字符分别用来转义第二、
+	四个 ^V 和末尾的 ^[。
+
+结果显示为:	ab esc ^V^V^[
+
+	命令行在 ^[ 之前包含两个实际的 ^V。将此命令写入 .exrc 配置文件时，文件
+	内实际出现的也是此格式。
+	执行时，首个 ^V 用来转义第二个 ^V: 这是因为 |:ab| 命令本身以 ^V 作为转
+	义符。以便在缩写内容中能包含空白字符或 | 字符。|:ab| 命令不会特殊处理
+	^[ 字符，因此无需额外转义 (多写一层转义符也无妨；输入 7 个 ^V 也能正常
+	工作，但 8 个不行)。
+
+内部保存为:	esc     ^V^[
+
+	解析后，将缩写的简短形式 ("esc") 和展开形式 (两字符 "^V^[") 保存在缩写
+	表中。执行不带参数的 |:ab| 命令查看缩写列表时，展示格式与此一致。
+
+	用户输入单词 "esc" 触发缩写展开后，展开形式视同键盘输入，会再次进行 ^V
+	转义解析。从而屏蔽 ^[ 的原生功能 (退出插入模式)，按本义插入普通文本
+	^[。
+
+最终展开为:	^[
+
+[示例由 Steve Kirkendall 提供]
+
+==============================================================================
+3. 局部映射和函数				*script-local*
+
+加载多个 Vim 脚本文件时，不同脚本内的自定义映射和函数容易出现同名冲突。解决办
+法是使其限定为脚本局部。
+
+						*<SID>* *<SNR>* *E81*
+映射或菜单定义中可用 "<SID>"。这要求 'cpoptions' 中没有 '<' 标志位 (|cpo-<|)。
+其作用是在同脚本的映射中调用脚本局部函数。
+
+执行映射命令时，Vim 会把 "<SID>" 替换为特殊键码 <SNR> 加当前脚本唯一编号加下划
+线。例如: >
+	:map <SID>Add
+实际生成的映射名为 "<SNR>23_Add" (假定当前脚本的编号为 23)。
+
+定义脚本函数时，使用 "s:" 前缀可限制该函数只能在同脚本内访问 (|Vim9| 脚本里函
+数前缀省略时默认就是脚本局部)。但在脚本外部执行的映射，执行时无法识别 "s:" 局
+部函数定义所在的脚本。因此映射中应改用 "<SID>" 替代 "s:"。这样，局部函数就会加
+上相同的脚本编号前缀，使映射可以正常调用局部函数。
+
+执行脚本局部函数时，在其定义所在脚本的上下文中运行。因此，该函数中新定义的函数
+或映射仍可使用 "s:" 或 "<SID>"，沿用该脚本的相同编号。此外，函数也可正常访问局
+部于该脚本的变量 "s:var"。
+
+执行自动命令或用户命令时，同样会在其定义所在脚本的上下文中运行。这些命令因此可
+调用同脚本的局部函数或局部映射。
+
+有些场景无法自动解析 <SID>，此时可借助 |expand()| 函数手动展开，示例: >
+	let &includexpr = expand('<SID>') .. 'My_includeexpr()'
+
+除此以外，在非脚本上下文中不能使用 "<SID>"，否则会报错。
+
+复杂脚本中如需提取脚本编号，可封装如下函数: >
+	function s:ScriptNumber()
+	  return matchstr(expand('<SID>'), '<SNR>\zs\d\+\ze_')
+	endfun
+
+列出函数和映射时，会显示 "<SNR>" 及脚本编号。方便定位定义来源。
+
+|:scriptnames| 命令列出所有已加载脚本，附带每个脚本对应的 <SNR> 编号。
+
+{仅当编译时加入 |+eval| 特性时，以上功能才有效}
+
+==============================================================================
+4. 用户自定义命令				*user-commands*
+
+可自定义用户 Ex 命令。用户命令的行为和内置命令一致 (支持行范围以及参数，参数可
+补全文件名或缓冲区名等)，唯一区别是执行时，用户命令会先被转换成标准 Ex 命令，
+然后执行。
+
+入门教程参考用户手册 |40.2|。
+
+					*E183* *E841* *user-cmd-ambiguous*
+用户命令必须以大写字母开头，避免与内置命令重名。以下名字是例外，不能用于用户命
+令 (因为已被内置命令占用):
+	|:Next|
+	|:X|
+|:Print| 也是内置命令，但已废弃，欢迎覆盖。
+
+用户命令其余字符可为任意大小写字母或数位字符。使用数位时，小心会与接受数值参数
+的命令产生歧义。例如，命令 `:Cc2` 无法区分是无参数的 `:Cc2`，还是带数值参数
+"2" 的 `:Cc` 命令。 建议调用时在命令名和参数间加空格以规避歧义。
+
+用户命令支持简写。但简写必须唯一，否则会报错。此外，内置命令优先级永远高于用户
+命令。
+
+例如: >
+	:command Rename ...
+	:command Renumber ...
+	:Rena				" 匹配 "Rename"
+	:Renu				" 匹配 "Renumber"
+	:Ren				" 报错 - 简写有二义性
+	:command Paste ...
+	:P				" 匹配内置命令 :Print
+
+脚本中对用户命令建议统一使用全名。
+
+:com[mand]						*:com* *:command*
+			列出所有用户命令。首列字符用于标识命令属性:
+			    !	命令带 -bang 属性
+			    "	命令带 -register 属性
+			    |   命令带 -bar 属性
+			    b	命令局部于当前缓冲区
+			(属性详情见下)
+			可搭配 |:filter| 命令筛选命令。如要列出名字带 "Pyth"
+			的所有命令: >
+				filter Pyth command
+
+:com[mand] {cmd}	列出所有以 {cmd} 开头的用户命令
+
+							*:command-verbose*
+'verbose' 非零时，列出命令的同时会附带显示该命令最后定义的文件路径和补全相关参
+数等信息。例如: >
+
+    :verbose command TOhtml
+<	名称	    参数 范围  补全      定义 ~
+	TOhtml	    0	 %		 :call Convert2HTML(<line1>, <line2>) ~
+	    最近修改于 /usr/share/vim/vim-7.0/plugin/tohtml.vim ~
+
+详见 |:verbose-cmd|。
+
+							*E174* *E182*
+:com[mand][!] [{attr}...] {cmd} {repl}
+			自定义用户命令。命令名为 {cmd}，命令执行时替换执行的
+			Ex 命令是 {repl}。命令属性 (见下) 为 {attr}。如果同名
+			命令已存在，报错，加 [!] 可强制重定义已有命令。
+			特例: 重新执行同一脚本时，脚本内先前定义的同名命令会静
+			默覆盖。
+
+:delc[ommand] {cmd}				*:delc* *:delcommand* *E184*
+			删除用户命令 {cmd}。
+								*E1311*
+			执行列出命令期间 (如定时器回调内)，不允许执行本命令。
+
+:delc[ommand] -buffer {cmd}					*E1237*
+			仅删除当前缓冲区专属的用户命令 {cmd}。
+
+:comc[lear]						*:comc* *:comclear*
+			清空所有用户命令。
+
+命令属性 ~
+							*command-attributes*
+用户命令和内置命令一样，支持参数、行范围、文件名或缓冲区名等参数补全。具体行为
+由定义时指定的属性控制。
+
+脚本内定义的用户命令可调用该脚本的局部函数和局部映射。执行用户命令时，在其定义
+所在的脚本上下文中运行。以便在命令执行中能正确调用 <SID> 标识的项目。
+
+属性分为四大类: 参数数目、补全类型、范围处理、特殊属性。下文分类说明。
+
+参数处理 ~
+						*E175* *E176* *:command-nargs*
+
+用户命令缺省不接受参数 (传入参数直接报错)。可通过 -nargs 属性指定合法参数数
+目。有效值为:
+
+	-nargs=0    不接受参数 (缺省)
+	-nargs=1    有且只有一个参数，参数内部可包括空白；自动补全仍会将空白视
+		    为参数分隔符
+	-nargs=_    有且只有一个参数，参数内部可包括空白；自动补全会将空白视为
+		    参数自身内容
+	-nargs=*    接受任意多个参数 (0、1 或更多)，参数间以空白分隔
+	-nargs=?    接受 0 或 1 个参数
+	-nargs=+    接受任意多个参数，但必须提供至少 1 个
+
+参数间以 (未转义的) 空白字符 (空格或制表) 分隔。但单参数模式会将空白视作参数本
+身内容。"-nargs=1" 和 "-nargs=_" 的区别是: >
+
+	func MyComplete(ArgLead, CmdLine, CursorPos)
+	  return ["one value", "two values", "three values"]
+		\->matchfuzzy(a:ArgLead)
+	endfunc
+	:command -nargs=1 -complete=customlist,MyComplete MyCmd1 echo <q-args>
+	:command -nargs=_ -complete=customlist,MyComplete MyCmd2 echo <q-args>
+
+输入 ":MyCmd1 two va<tab>" 补全结果: >
+
+	:MyCmd1 two one value
+
+此时，two 在补全时被视为独立参数，补全时只匹配 "va"。
+输入 ":MyCmd2 two va<tab>" 补全结果: >
+
+	:MyCmd2 two values
+
+此时，"two va" 在补全时被整体匹配。
+
+需要将全部参数原样作为单个值时，使用 -nargs=_。需要多个参数，且参数中可能包含
+空格时 (分割仍需继续)，使用 -nargs=+/* 并配合 |:command-completeopt| 参数
+(-completeopt=escape)。
+
+
+注意 传入参数用作纯文本，而非当作表达式解析。尤其是，使用 "s:var" 作为参数时，
+会读取命令定义所在脚本的局部变量，而非调用命令时当前脚本的局部变量！例如:
+    script1.vim: >
+	:let s:error = "正确"
+	:command -nargs=1 Error echoerr <args>
+<    script2.vim: >
+	:source script1.vim
+	:let s:error = "出错"
+	:Error s:error
+执行 script2.vim 输出 "正确"，而非预期的 "出错"！如果需要动态取值，建议改用函
+数调用。
+
+
+补全类型 ~
+				*:command-completion* *E179* *E180* *E181*
+				*:command-complete*
+用户命令缺省不开启参数补全。可通过指定 --complete 系列属性，启用对应类型的补
+全:
+
+	-complete=arglist	参数列表 (|arglist|) 中的文件名
+	-complete=augroup	自动命令组名
+	-complete=behave	|:behave| 子选项名
+	-complete=breakpoint	|:breakadd| 子选项名
+	-complete=buffer	缓冲区名
+	-complete=color		色彩方案名 (|color-schemes|)
+	-complete=command	Ex 内置命令 (含命令参数) (|ex-cmd-index|)
+	-complete=compiler	编译器 (|:compiler|) 名
+	-complete=cscope	|:cscope| 子选项名
+	-complete=diff_buffer	比较 (|diff|) 缓冲区名
+	-complete=dir		目录名
+	-complete=dir_in_path	基于 'cdpath' 的相对目录名
+	-complete=environment	环境变量名
+	-complete=event		自动命令事件名 (|{event}|)
+	-complete=expression	Vim 表达式，用户或内置函数或变量名
+	-complete=file		文件和目录名
+	-complete=file_in_path	基于 'path' 的相对路径文件和目录名
+	-complete=filetype	文件类型名 ('filetype')
+	-complete=function	函数名 (|function-list|)
+	-complete=help		帮助文档主题
+	-complete=highlight	高亮组名 (|highlight-groups|)
+	-complete=history	|:history| 子选项名
+	-complete=keymap	键盘映射名 (|mbyte-keymap|)
+	-complete=locale	locale 名 (见 `locale -a` 外壳命令输出)
+	-complete=mapclear	|:mapclear| 命令参数名，仅有 "<buffer>" 一项
+	-complete=mapping	映射名 (|:map_l|)
+	-complete=menu		菜单名 (|menus|)
+	-complete=messages	|:messages| 子选项名
+	-complete=option	选项名 (|option-list|)
+	-complete=packadd	可选包 (|pack-add|) 名
+	-complete=runtime	基于 'runtimepath' 的相对路径文件和目录名
+	-complete=scriptnames	已加载脚本名 (|:scr|)
+	-complete=shellcmd	外壳命令名 (|:!|)
+	-complete=shellcmdline	首参数为外壳命令，后续为文件名。其行为同
+				|:!cmd|。需搭配 |:command-nargs| 为 '*' 或 '+'
+				才能正确补全
+	-complete=sign		|:sign| 子选项名
+	-complete=syntax	语法文件名 ('syntax')
+	-complete=syntime	|:syntime| 子选项名
+	-complete=tag		标签
+	-complete=tag_listfiles	标签，但敲入 CTRL-D 时附带显示对应文件名
+	-complete=user		系统用户名
+	-complete=var		用户自定义变量名
+	-complete=custom,{func} {func} 自定义补全函数 (返回换行符分隔字符串)
+	-complete=customlist,{func} {func} 自定义补全函数 (返回候选列表)
+
+如果命令不接受参数 (-nargs=0，这是缺省) 但指定补全属性，报错 *E1208* 。
+备注: 部分补全类型可能会自动展开环境变量。
+
+
+自定义补全函数 ~
+				*:command-completion-custom*
+				*:command-completion-customlist* *E467* *E468*
+通过 "custom,{func}" 或 "customlist,{func}" 补全参数，可通过 {func} 函数自定义
+补全方案。函数签名如下:
+
+	:function {func}(ArgLead，CmdLine，CursorPos)
+
+函数可按需要使用输入参数，返回值为补全候选。具体类型随参数而异。
+
+使用 "custom" 参数时，函数应返回以换行符分隔的单个字符串，每行一个候选。
+							*E1303*
+使用 "customlist" 参数时，函数应返回 Vim 列表形式的补全候选项。每个候选项可以
+是字符串或字典。字典项的可用键为:
+	word	(必填) 选中后插入到命令行的文本
+	abbr	当 'wildoptions' 包含 "pum" 时，在弹出菜单中替代 "word" 显示的
+		别名；适用于插入内容 ("word") 与显示内容 ("abbr") 不同的场景
+	kind	简短类型文本 (一或两个字符)，当 'wildoptions' 包含 "pum" 时，
+		在弹出菜单中显示
+	menu	在弹出菜单中的匹配项后显示的额外说明文字
+	info	在信息弹窗 (需要 |+popupwin| 特性) 中显示的详细描述
+使用字符串和字典之外的类型，或缺少 "word" 必填键的字典候选项会被直接忽略。
+'wildoptions' 里不含 "pum" 时，仅展示 "word" 字段。
+
+函数参数分别为:
+	ArgLead		当前正在补全的参数前导文本；注意仅捕获空白分割后当前单
+			词中的前导部分，即使是使用了 "-nargs=1" 也是如此
+	CmdLine		完整命令行文本
+	CursorPos	命令行上光标所在字节位置
+函数需要根据三者判断上下文，自行处理。
+使用 "custom" 参数时，Vim 在函数返回后会根据 ArgLead 自动过滤 (通过内置正则表
+达式引擎) 候选项，函数无需自行过滤。多数情况下，这样做效率更高。'wildoptions'
+包含 "fuzzy" 时，会改用 |fuzzy-matching| 引擎过滤候选。
+使用 "customlist" 参数时，Vim 不会自动过滤返回候选项，函数应自行过滤。
+
+下例为 Finger 命令补全用户名: >
+    :com -complete=custom,ListUsers -nargs=1 Finger !finger <args>
+    :fun ListUsers(A,L,P)
+    :    return system("cut -d: -f1 /etc/passwd")
+    :endfun
+
+此例中，函数返回所有系统用户名，Vim 会自动根据前导文本进行过滤。
+下例基于 'path' 选项指定的目录补全文件名: >
+    :com -nargs=1 -bang -complete=customlist,EditFileComplete
+			\ EditFile edit<bang> <args>
+    :fun EditFileComplete(A,L,P)
+    :    return split(globpath(&path, a:A), "\n")
+    :endfun
+<
+此例中，函数需要自行处理前导文本，要注意此实现未正确处理带空格的文件名！
+
+							*:command-completeopt*
+对于 "custom" 和 "customlist" 类型，可通过 -completeopt= 属性进一步选择特定行
+为。该属性接受以逗号分隔的选项名；目前仅识别 "escape":
+
+	-completeopt=escape
+		补全函数可返回包含空格、制表符或反斜杠的匹配项。将此类匹配项插
+		入命令行时，每个空格、制表符和反斜杠前都会加上反斜杠，以便将该
+		值保留为单个参数。
+		在展示界面 (弹出菜单 / 'wildmenu' / |getcompletion()|) 中，会
+		使用未经转义的原始文本。传递给补全函数的 ArgLead 同样使用原始
+		文本: 例如用户输入 `:Cmd foo\ b<Tab>` 时，函数收到的内容是
+		`foo b`，而不是 `foo\ b`。在命令替换文本中，|<q-args>| 和
+		|<f-args>| 同样会得到原始文本。
+
+示例: >
+    :func MyComplete(ArgLead, CmdLine, CursorPos)
+    :    return filter(['hello world', 'good morning'],
+    :    \              {_, v -> stridx(v, a:ArgLead) ==# 0})
+    :endfunc
+    :com! -nargs=1 -complete=customlist,MyComplete -completeopt=escape MyCmd
+		\ echo <q-args>
+<
+执行 `:MyCmd <Tab>` 后，弹出菜单显示 `hello world` 和 `good morning`。输入
+`:MyCmd hello\ w<Tab>` 时，MyComplete 收到的 ArgLead 为 `hello w` (空格前的反
+斜杠已移除)；过滤器返回 `hello world`，然后 `<Tab>` 会将其插入为
+`:MyCmd hello\ world`。此时 `<q-args>` 求值得到逻辑上的 `hello world`。
+
+未给出 `-completeopt=escape` 参数时，插入命令行的是按本义出现的字符串
+`hello world`，此时 Vim 的参数分割器会将其视为两个参数。
+
+`-completeopt=escape` 和 `-nargs=_` (见 |:command-nargs|) 适用于不同参数形式；
+它们并非同一问题的两种竞争方案:
+	"整行作为一个参数，不转义"
+		使用 `-nargs=_`
+	"多个参数，每个参数都可能包含空格"
+		使用 `-nargs=+` 或 `-nargs=*`，并配合 `-completeopt=escape`
+`-nargs=_` 会禁用参数分割器，转义在此情况下无效，因此组合使用 `-nargs=_` 和
+`-completeopt=escape` 会报错 (E1579)。
+
+
+范围处理 ~
+			*E177* *E178* *:command-range* *:command-count*
+用户命令缺省不接受行范围。可通过 -range 属性指定命令接受范围，也可指定任意计数
+值，有以下两种指定风格。出现在行号位置 (-range=N，类似 |:split|)，也可作为单独
+"count" 参数 (-count=N，类似 |:Next|)。计数可在命令体内通过 |<count>| 获取。
+
+可选属性值为:
+
+	-range	    允许使用范围，缺省为当前行
+	-range=%    允许使用范围，缺省为整个文件 (1,$)
+	-range=N    允许使用 [count]，出现在行号位置 (缺省为 N) (用法类似
+		    |:split|)；支持零行号
+	-count=N    允许使用 [count]，可出现在行号位置，也可作为命令首个参数
+		    (缺省为 N) (用法类似 |:Next|)
+	-count	    同 -count=0
+
+注意 -range=N 与 -count=N 互斥，只能二选一。
+
+					*:command-addr*
+范围中的特殊行限定符 (见 |:range|)，包括 "."、"$" 或 "%" 缺省分别对应当前行、
+文件末行以及整个缓冲区，但可通过 -addr 参数修改其语义，使其作用于参数列表、(已
+加载) 缓冲区列表、窗口列表或标签页列表等对象。
+
+可选值为 (第二列为列出命令使用的简写):
+	属性完整写法	列表简写	选择范围~
+    -addr=lines			文件行列表 (缺省)
+    -addr=arguments	  arg	参数列表
+    -addr=buffers	  buf	缓冲区列表 (也包括未加载缓冲区)
+    -addr=loaded_buffers  load	已加载缓冲区列表
+    -addr=windows	  win	窗口列表
+    -addr=tabs		  tab	标签页列表
+    -addr=quickfix	  qf	快速修复项目列表
+    -addr=other		  ?	其他范围；仍可用 "."、"$" 和 "%" (使用 "lines"
+				的相应值，这是 -count 参数使用的缺省类型)
+
+
+特殊属性 ~
+					*:command-bang* *:command-bar*
+					*:command-register* *:command-buffer*
+					*:command-keepscript*
+其他特殊属性列举如下:
+
+	-bang	    命令支持可选 ! 修饰符后缀 (用法类似 |:q| 或 |:w|)
+	-bar	    命令支持后续 "|" 拼接其他命令。此时命令自身参数内不允许使
+		    用 "|"。同时会识别 " 作为注释开始 (译者注: Vim9 脚本则支持
+		    # 作为注释开始)。
+	-register   命令首个参数为可选寄存器名 (用法类似 |:del|、|:put|、
+		    |:yank|)。
+	-buffer	    命令为缓冲区局部，仅在当前缓冲区内可用。
+	-keepscript 详细 (verbose) 消息不报告命令的定义位置，改为显示该命令被
+		    调用时的位置。
+
+-count 和 -register 属性提供可选参数时，相应内容会从参数列表中删除，在下述的替
+换文本中，可通过其他占位符单独获取 (译者注: 两者都指定时，应先提供寄存器参数，
+再提供计数参数，参见 |:yank|)。
+注意 属性名支持简写，但这是已淘汰的功能，新脚本里请用全名。
+
+替换文本 ~
+							*:command-repl*
+{repl} 参数常规写法是完整命令串，可通过 "|" 分隔多条命令。也可使用代码块写法。
+此时 {repl} 参数为 "{" ，后续多行代码直到首字符为 "}" 的行全部作为命令体并应用
+|Vim9| 语法。示例: >
+	:command MyCommand {
+		echo 'hello'
+		g:calledMyCommand = true
+	    }
+<							*E1231*
+"{" 左侧必须有空白字符。不支持嵌套块，块内不能使用内联函数。参数可合法包含 "|"
+的命令 (如带表达式参数的命令，详见 |:bar|) 不能后跟 "|" 拼接其他命令。
+
+Vim9 脚本中定义的命令 (所在脚本文件以 `:vim9script` 开头，或在 `:def` 函数内定
+义) 会以 Vim9 语法执行 {repl}。注意执行语法由命令定义位置决定，而非调用位置。
+
+用户命令替换文本 {repl} 会扫描 <...> 记法的特殊占位符并替换为输入命令行的对应
+内容。其余文本原样保留。如需按本义输出 <，用 <lt> 转义，例如要按本义包含
+"<bang>"，需用 "<lt>bang>"。结果字符串会作为 Ex 命令执行。
+
+下面列出所有合法占位符及其替换值:
+
+						*<line1>*
+	<line1>	命令范围的开始行。无 "-range" 或 "-range=%" 属性时未定义。
+						*<line2>*
+	<line2>	命令范围的结束行。无 "-range" 或 "-range=%" 属性时未定义。
+						*<range>*
+	<range> 命令范围使用的行限定符个数: 0、1 或 2 (或更多，但极少见)。
+						*<count>*
+	<count>	传入的计数 (对应 "-range=N" 和 "-count" 属性)，缺省为属性指定
+		缺省计数，无相关属性时缺省为 -1。
+						*<bang>*
+	<bang>	(对应 "-bang" 属性) 调用命令带 ! 修饰符时为 !，否则为空串。
+				*<mods>* *<q-mods>* *:command-modifiers*
+	<mods>  命令前置修饰符。无修饰符时为空串。支持以下修饰符
+		|:aboveleft|、|:belowright|、|:botright|、|:browse|、
+		|:confirm|、|:hide|、|:horizontal|、|:keepalt|、|:keepjumps|、
+		|:keepmarks|、|:keeppatterns|、|:leftabove|、|:lockmarks|、
+		|:noautocmd|、|:noswapfile|、|:rightbelow|、|:sandbox|、
+		|:silent|、|:tab|、|:topleft|、|:unsilent|、|:verbose| 和
+		|:vertical|。
+		注意 不支持 |:filter|。
+		示例: >
+		    command! -nargs=+ -complete=file MyEdit
+				\ for f in expand(<q-args>, 0, 1) |
+				\ exe '<mods> split ' .. f |
+				\ endfor
+
+		    function! SpecialEdit(files, mods)
+			for f in expand(a:files, 0, 1)
+			    exe a:mods .. ' split ' .. f
+			endfor
+		    endfunction
+		    command! -nargs=+ -complete=file Sedit
+				\ call SpecialEdit(<q-args>, <q-mods>)
+<
+						*<reg>* *<register>*
+	<reg>	(对应 '-register' 属性) 传入的寄存器名。缺省为空串。<register>
+		是等价别名。
+						*<args>*
+	<args>	完整原始参数文本 (但如上所述，可选的计数或寄存器参数会从参数列
+		表中删除，不会出现在 <args> 中)。
+	<lt>	按本义出现的 '<' (小于号) 字符。用于转义占位符。如，要按本义输
+		出 <bang>，可用 "<lt>bang>"。
+
+							*<q-args>*
+占位符使用 "q-" 前缀时 (如 <q-args>)，其对应值会用引号括起，方便在表达式中使
+用。这种方式会将参数列表整体作为单个字符串。无参数时，<q-args> 为带引号的空
+串。示例见下 |q-args-example|。
+							*<f-args>*
+要在命令中将参数批量传递给用户自定义函数，可用特殊占位符 <f-args> (代表
+"function args"，函数参数)。使用空白字符 (空格和制表) 分割命令行参数，逐个为每
+个参数添加引号，然后整体替换为逗号分隔的带引号参数列表。无参数时，<f-args> 为
+空 (不带引号)。
+
+要让单个参数内部包含空白字符，加上前导反斜杠转义。<f-args> 同时会将参数中连续
+两个反斜杠替换为单个反斜杠，反斜杠后紧跟非空白、非反斜杠字符，则原样保留。完整
+示例见下 |f-args-example|。简要规则总览:
+
+	完整命令	   <f-args> ~
+	XX ab		   'ab'
+	XX a\b		   'a\b'
+	XX a\ b		   'a b'
+	XX a\  b	   'a ', 'b'
+	XX a\\b		   'a\b'
+	XX a\\ b	   'a\', 'b'
+	XX a\\\b	   'a\\b'
+	XX a\\\ b	   'a\ b'
+	XX a\\\\b	   'a\\b'
+	XX a\\\\ b	   'a\\', 'b'
+	XX		   [空]
+
+注意 如需正确处理 "无参数" 场景，要保证目标函数支持无参调用。对 Vim9 已编译函
+数，可考虑可变参数，见 |vim9-variable-arguments|。
+
+用户命令示例: >
+
+   " 删除下行到文件末所有内容
+   :com Ddel +,$d
+
+   " 重命名当前缓冲区，支持 ! 强制覆盖，参数补全文件名
+   :com -nargs=1 -bang -complete=file Ren f <args>|w<bang>
+
+   " 用外部文件内容替换行范围 (以下命令需一行输入)
+   :com -range -nargs=1 -complete=file
+	 Replace <line1>-pu_|<line1>,<line2>d|r <args>|<line1>d
+
+   " 统计范围行数
+   :com! -range -nargs=0 Lines  echo <line2> - <line1> + 1 "行"
+
+<						*f-args-example*
+将命令参数批量传递给用户函数 (<f-args> 示例) >
+   :com -nargs=* Mycmd call Myfunc(<f-args>)
+
+执行: >
+	:Mycmd arg1 arg2
+时，内部自动展开为: >
+	:call Myfunc("arg1","arg2")
+
+<						*q-args-example*
+完整实用示例: >
+   :function Allargs(command)
+   :	let i = 0
+   :	while i < argc()
+   :	   if filereadable(argv(i))
+   :	    execute "e " .. argv(i)
+   :	     execute a:command
+   :      endif
+   :      let i = i + 1
+   :   endwhile
+   :endfunction
+   :command -nargs=+ -complete=command Allargs call Allargs(<q-args>)
+
+Allargs 命令接受任意一条或 (用 "|" 分隔的) 多条 Vim Ex 命令作为参数，遍历参数
+列表里所有文件，打开每个文件并执行传入命令。使用示例 (注意其中用 "e" 标志位标
+记匹配失败时不报错，而 "update" 命令确保已修改缓冲区被自动保存):
+	:Allargs %s/foo/bar/ge|update
+内部自动展开为: >
+	:call Allargs("%s/foo/bar/ge|update")
+<
+
+ vim:tw=78:ts=8:noet:ft=help:norl:

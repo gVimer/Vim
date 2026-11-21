@@ -1,0 +1,453 @@
+*textprop.txt*	适用于 Vim 9.2 版本。  最近更新: 2026年7月
+
+
+		  VIM 参考手册	by Bram Moolenaar
+				译者: Willis
+
+
+显示附加属性的文本。				*textprop* *text-properties*
+
+
+1. 介绍				|text-prop-intro|
+2. 函数				|text-prop-functions|
+3. 文本变更时			|text-prop-changes|
+
+
+{仅当编译时加入 |+textprop| 特性才可以使用文本属性}
+
+==============================================================================
+1. 介绍							*text-prop-intro*
+
+缓冲区中的文本可附属文本属性。属性可跟随文本移动: 增删行时，属性会随着绑定文本
+移动。在文本属性所在行中，在属性之前增删文本时也会如此。在文本属性内部增删文本
+时，属性长度会相应增减。
+
+文本属性的主要用途是文本高亮。可看作语法高亮的替代方案。无需定义匹配文本的正则
+模式，则脚本设置高亮 (可使用外部解析器的输出)。仅需执行一次绑定，屏幕重绘时不
+用重复执行，因此在完成初始设置文本属性的开销后，性能会提高不少。
+
+文本属性也可用于其他文本标识用途。例如，可在函数名上附加文本属性，以便定义搜
+索，跳转到下个/上个函数。
+
+文本属性绑定在指定的行列位置，并拥有指定长度，可以跨行。
+
+文本属性包含以下字段:
+	"id"		用户自定义编号
+	"type"		属性类型名
+
+
+属性类型 ~
+							*E971*
+文本属性一般绑定属性类型名，类型定义文本的高亮风格。属性类型包含以下条目:
+	"highlight"	所用的高亮组名
+	"combine"	省略或为 TRUE 时，文本属性高亮会与语法高亮叠加；
+			为 FALSE 时，文本属性高亮会覆盖语法高亮
+	"priority"	类型优先级。多个属性有重叠时，优先级高的生效
+	"start_incl"	为 TRUE 时，在起始位置插入的文本会纳入该文本属性
+	"end_incl"	为 TRUE 时，在结束位置插入的文本会纳入该文本属性
+
+
+示例 ~
+
+假定缓冲区第 11 行有如下文本 (不含缩进):
+
+	The number 123 is smaller than 4567.
+
+要高亮其中数值部分: >
+	call prop_type_add('number', {'highlight': 'Constant'})
+	call prop_add(11, 12, {'length': 3, 'type': 'number'})
+	call prop_add(11, 32, {'length': 4, 'type': 'number'})
+
+尝试在这段文本上方插入或删除行，会看到文本属性始终跟随文本，行号会自动调整。
+
+目标文本两侧有空白字符 (如函数名) 时，置位 "start_incl" 和 "end_incl" 很有用。
+如果文本首尾是特定字符 (如包围字符串的引号)，则适合设为 false。
+
+	func FuncName(arg) ~
+	     ^^^^^^^^        属性应置位 start_incl 和 end_incl
+
+	var = "text"; ~
+	      ^^^^^^	     属性应复位 start_incl 和 end_incl
+
+不过有文本增删时，仍可能需要重新解析文本以更新文本属性。但此项工作可异步进行。
+
+
+内部错误 *E967*
+
+如果遇到 E967，请通过 Github 提供漏洞报告:
+https://github.com/vim/vim/issues/new
+
+==============================================================================
+2. 函数							*text-prop-functions*
+
+管理文本属性类型:
+
+prop_type_add({name}, {props})		定义新属性类型
+prop_type_change({name}, {props})	修改已有属性类型
+prop_type_delete({name} [, {props}])	删除属性类型
+prop_type_get({name} [, {props}])	获取属性类型配置
+prop_type_list([{props}])		列出属性类型
+
+
+管理文本属性:
+
+prop_add({lnum}, {col}, {props})	新增文本属性
+prop_add_list({props}, [{item}, ...])
+					在多个位置新增文本属性
+prop_clear({lnum} [, {lnum-end} [, {bufnr}]])
+					删除全部文本属性
+prop_find({props} [, {direction}])	查找文本属性
+prop_list({lnum} [, {props}])		获取第 {lnum} 行上的文本属性
+prop_remove({props} [, {lnum} [, {lnum-end}]])
+					删除单个文本属性
+
+						*text-prop-functions-details*
+
+						*prop_add()* *E965*
+prop_add({lnum}, {col}, {props})
+		在指定位置 {lnum}，{col} 上绑定文本属性。{col} 按字节计数，首
+		列为一。
+		如果 {lnum} 非法，报错。 *E966*
+		如果 {col} 非法，报错。 *E964*
+
+		{props} 为字典，支持以下字段:
+		   type		文本属性类型名
+		   length	文本字节长度，仅用于不会跨行的属性；可为零
+		   end_lnum	文本结束行号 (含)
+		   end_col	文本结束位置的后一列；给出 "length" 时不用；
+				{col} 和 "end_col" 相等且 "end_lnum" 省略或与
+				{lnum} 相等时，代表零宽度文本属性
+		   bufnr	要绑定属性的缓冲区；省略时，使用当前缓冲区
+		   id		用户自定义属性 ID；必须为正数 |E1510|；
+				给出 "text" 时，"id" 值忽略，自动分配负数 ID；
+				否则默认 ID 为零
+							*E1305*
+		   text		显示在第 {col} 列之前的虚拟文本，{col} 为零则
+				显示在该行上方或下方；可在前后填充空白，用于高
+				亮留白；不可与 "length"、"end_lnum" 和
+				"end_col" 同时使用。详见 |virtual-text|。
+							*E1294*
+		   text_align	"text" 给出且 {col} 为零时；指定虚拟文本的显示
+				位置:
+				   after   行尾之后
+				   right   窗口内右对齐 (文本回绕到下一屏幕行
+					   除外)
+				   below   下一屏幕行
+				   above   紧贴本行上方
+				省略时默认 "after"。每行仅可放置一个 "right"
+				属性，如果有两个或更多，它们将放在单独的行上，
+				仍保持右对齐。
+		   text_padding_left				*E1296*
+				"text" 给出且 {col} 为零时；文本行末尾
+				("above" 和 "below" 模式下则为最左列) 与虚拟文
+				本之间的留白宽度，该空白不被高亮
+		   text_wrap	"text" 给出且 {col} 为零时，定义文本溢出的处理
+				方式:
+				   wrap      文本回绕到下行显示
+				   truncate  截断文本以适配窗口
+				省略时默认 "truncate"。
+				注意 此字段作用于单个文本属性，而 'wrap' 选项
+				设置全局行为。"wrap" 值仅当 'wrap' 选项置位时
+				才生效；'nowrap' 时文本总会在窗口右边缘截断。
+		除 "type" 外所有字段均可选。
+
+		不能同时给出 "length" 与 "end_lnum" / "end_col"。单行属性可以
+		选用 "length" 或 "end_col"，跨多行属性必须用 "end_lnum" 以及
+		"end_col"。
+		既不给出 "length" 也不给出 "end_col" 时，属性为零宽度。这意味
+		着它类似位置标记，会跟随文本移动。所用属性类型指定高亮时，则会
+		高亮一个字符。
+		属性可以正好结束在文本最后一个字符处，也可以延伸到该行末尾 (此
+		时在最后一个字符之后)。在后一种情况下，向该行追加文本时，文本
+		属性会自动扩展，即使本属性类型不置位 "end_incl" 时也是如此。
+
+		"type" 会优先在添加属性的缓冲区中查找。找不到再查找全局属性类
+		型。仍不存在则报错。
+							*virtual-text*
+		"text" 给出且 {col} 不为零时，在文本属性起始位置绘制该文本。缓
+		冲区原有文本会向后腾出空间。这被称为 "虚拟文本"。
+		{col} 为零时，虚拟文本绘制在缓冲区文本的上方、行尾或下方。由
+		"text_align" 和 "text_wrap" 参数控制。
+		要区分虚拟文本和缓冲区文本，可在 "text" 字段前后补空白，或配置
+		"text_padding_left" 值。
+
+		务必选用合适高亮，清楚告知用户这是虚拟文本且不可编辑，否则很容
+		易引起混淆。使用 "above" 时要明确该文本归属下方行，而使用
+		"below" 时要明确该文本归属上方行。
+
+		虚拟文本仅用于展示，不属于实际缓冲区内容，光标也无法定位其上。
+		鼠标点击时，光标会跳到该文本之后的首个字符，或该行末尾字符。
+		虚拟文本内的制表符和其他控制字符会转换为空格 (理据: 否则难以计
+		算文本宽度)。
+		使用虚拟文本时，函数会分配并返回负数 "id"。
+
+		负数 "id" 保留给带 "text" 的文本属性，其他情况下禁止使用。如果
+		使用，会报错 *E1293* 。
+
+		返回属性 ID (手动指定的 "id" 字段或自动分配的负数 "id")。
+
+		也可用作 |method|: >
+			GetLnum()->prop_add(col, props)
+<
+		返回类型: |Number|
+
+
+prop_add_list({props}, [{item}, ...])			*prop_add_list()*
+		类似 |prop_add()|，但用于在缓冲区的多个位置绑定文本属性。
+
+		{props} 为字典，支持以下字段:
+		   bufnr	要绑定属性的缓冲区；省略时，使用当前缓冲区
+		   id		用户自定义属性 ID；必须为数值；省略时默认为零
+		   type		文本属性类型名
+		除 "type" 外，其余字段均可选。
+
+		第二个参数是项目列表，每个 {item} 为列表，指定一段文本的起止位
+		置，格式为: [{lnum}, {col}, {end-lnum}, {end-col}]
+		或:         [{lnum}, {col}, {end-lnum}, {end-col}, {id}]
+
+		前两项 {lnum} 和 {col} 指定属性绑定文本的起始位置。
+		后两项 {end-lnum} 和 {end-col} 指定文本结束位置的后一列。
+		可选第五项 {id} 为此条属性单独指定 ID。省略时，沿用 {props} 中
+		的 id，如果没有则使用零。
+
+		本函数不支持添加带 "text" 字段的文本属性。
+
+		示例: >
+			call prop_add_list(#{type: 'MyProp', id: 2},
+					\ [[1, 4, 1, 7],
+					\  [1, 15, 1, 20],
+					\  [2, 30, 3, 30]])
+<
+		也可用作 |method|: >
+			GetProp()->prop_add_list([[1, 1, 1, 2], [1, 4, 1, 8]])
+<
+		返回类型: 无
+
+
+prop_clear({lnum} [, {lnum-end} [, {props}]])		*prop_clear()*
+		删除第 {lnum} 行上全部文本属性。
+		给出 {lnum-end} 时，删除 {lnum} 到 {lnum-end} (含) 所有行上的
+		全部文本属性。
+
+		{props} 包含 "bufnr" 字段时，使用指定缓冲区，否则默认使用当前
+		缓冲区。
+
+		也可用作 |method|: >
+			GetLnum()->prop_clear()
+<
+		返回类型: 无
+
+
+prop_find({props} [, {direction}])			*prop_find()*
+		按 {props} 指定的条件，查找文本属性:
+		   id		匹配该 ID 的属性
+		   type		匹配该类型名的属性
+		   both		"id" 和 "type" 必须同时匹配
+		   bufnr	搜索目标缓冲区；给出时，必须提供 "lnum" 和
+				"col"，指定起始位置；省略时，使用当前缓冲区
+		   lnum		搜索起始行 (省略时从光标所在行开始)
+		   col		搜索起始列 (省略且 "lnum" 给出时: 从第 1 列开
+				始，否则从光标所在列开始)
+		   skipstart	不在起始位置进行匹配
+
+		"id" 或 "type" 两者匹配其中之一即可 (除非给出 "both")。
+		{direction} 可选值为: "f" 正向搜索，"b" 反向搜索。省略时默认正
+		向搜索。
+
+		匹配成功时，返回类似 |prop_list()| 的字典，但额外包含 "lnum"
+		字段。如果未找到匹配，返回空字典。
+
+		返回类型: dict<any>
+
+
+prop_list({lnum} [, {props}])				*prop_list()*
+		返回列表，包含第 {lnum} 行上的全部文本属性。
+
+		{props} 为字典，支持以下可选字段:
+		   bufnr	使用指定缓冲区，默认使用当前缓冲区
+		   end_lnum	返回 {lnum} 到 {end_lnum} (含) 所有行上的全部
+				文本属性。
+				可用负值指定相对于缓冲区末行的偏移；-1 指向缓
+				冲区末行。
+		   types	属性类型名列表。仅返回类型匹配列表中任意一项的
+				文本属性。
+		   ids		属性 ID 列表。仅返回 ID 匹配列表中任意一项的文
+				本属性。
+
+		返回属性按起始列和优先级排序。每个属性为字典，包含以下字段:
+		   lnum		起始行号。仅当查询 {lnum} 到 {end_lnum} 间多行
+				文本属性时才存在。
+		   col		起始列
+		   length	字节长度，包含换行符则长度加一
+		   id		属性 ID
+		   text		在 {col} 之前展示的虚拟文本。仅存在于
+				|virtual-text| 虚拟文本属性。
+		   text_align	|virtual-text| 的对齐属性。
+		   text_padding_left
+				|virtual-text| 的左侧留白宽度。
+		   text_wrap	|virtual-text| 是否使用回绕。
+		   type		属性类型名，类型已被删除则此字段省略
+		   type_bufnr	定义该类型的缓冲区编号；全局类型为 0
+		   start	为 TRUE 时，属性从此行开始
+		   end		为 TRUE 时，属性在此行结束
+
+		"start" 为零 (假值) 时，属性起始行在上方，本行属于后续行。
+		"end" 为零 (假值) 时，属性会延续到下一行。本行末尾的换行符会被
+		计入。
+
+		如果出错，返回空列表。
+
+		示例: >
+		   " 获取放置在第 5 行的文本属性
+		   echo prop_list(5)
+		   " 获取放置在 4 号缓冲区第 20 行的全部文本属性
+		   echo prop_list(20, {'bufnr': 4})
+		   " 获取放置在第 1 行到第 20 行的全部文本属性
+		   echo prop_list(1, {'end_lnum': 20})
+		   " 获取所有类型为 'myprop' 的文本属性
+		   echo prop_list(1, {'types': ['myprop'],
+						\ 'end_lnum': -1})
+		   " 获取所有类型为 'prop1' 或 'prop2' 的文本属性
+		   echo prop_list(1, {'types': ['prop1', 'prop2'],
+						\ 'end_lnum': -1})
+		   " 获取所有 ID 为 8 的文本属性
+		   echo prop_list(1, {'ids': [8], 'end_lnum': line('$')})
+		   " 获取所有 ID 为 10 和 20 的文本属性
+		   echo prop_list(1, {'ids': [10, 20], 'end_lnum': -1})
+		   " 获取在 4 号缓冲区、类型为 'myprop' 且 ID 为 100 的全部文
+		   " 本属性
+		   echo prop_list(1, {'bufnr': 4, 'types': ['myprop'],
+					\ 'ids': [100], 'end_lnum': -1})
+<
+		也可用作 |method|: >
+			GetLnum()->prop_list()
+<
+		返回类型: list<dict<any>> 或 list<any>
+
+						*prop_remove()* *E968* *E860*
+prop_remove({props} [, {lnum} [, {lnum-end}]])
+		删除第 {lnum} 行内匹配的文本属性。{lnum-end} 给出时，删除
+		{lnum} 到 {lnum-end} (含) 所有行内匹配的文本属性。
+		{lnum} 省略时，在全部行中删除匹配的文本属性 (需要遍历全部行，
+		缓冲区行数很多时会稍慢)。
+
+		{props} 为字典，支持以下字段:
+		   id		删除带此 ID 的文本属性
+		   type		删除带此类型名的文本属性
+		   types	删除类型名在此列表内的文本属性
+		   both		"id" 和 "type"/"types" 必须同时匹配
+		   bufnr	使用指定缓冲区，而非当前缓冲区
+		   all		为 TRUE 时，删除所有匹配项，而非仅第一项
+		"type" 和 "types" 只能提供其中一个。 *E1295*
+
+		"id" 或类型名两者匹配其中之一即可 (除非给出 "both")。
+		如果 "bufnr" 指定的缓冲区不存在，报错。
+		如果 "bufnr" 指定的缓冲区未加载，无任何操作。
+
+		返回被删除的属性数量。
+
+		也可用作 |method|: >
+			GetProps()->prop_remove()
+<
+		返回类型: |Number|
+
+
+prop_type_add({name}, {props})		*prop_type_add()* *E969* *E970*
+		新增名为 {name} 的文本属性类型。如果同名类型已存在则报错。无返
+		回值。
+		{props} 为字典，支持以下可选字段:
+		   bufnr	仅在指定缓冲区内定义属性类型；可避免命名冲突，
+				且缓冲区删除时会自动清理缓冲区局部的属性类型。
+		   highlight	所用高亮组名
+		   priority	优先级。单个字符存在多个文本属性时，所属类型的
+				优先级最高者生效；可取负值，缺省优先级为零
+		   combine	省略或为 TRUE 时，该高亮会与语法高亮叠加；
+				为 FALSE 时，该高亮会覆盖语法高亮
+		   override	为 TRUE 时，高亮覆盖所有其他高亮，包括
+				'cursorline' 和可视高亮
+		   start_incl	为 TRUE 时，在起始位置插入的文本会纳入该文本属
+				性
+		   end_incl	为 TRUE 时，在结束位置插入的文本会纳入该文本属
+				性
+
+		也可用作 |method|: >
+			GetPropName()->prop_type_add(props)
+<
+		返回类型: 无
+
+
+prop_type_change({name}, {props})			*prop_type_change()*
+		修改已有文本属性类型的配置。如果相应的属性类型不存在，报错。
+		{props} 参数同 |prop_type_add()|。
+
+		也可用作 |method|: >
+			GetPropName()->prop_type_change(props)
+<
+		返回类型: 无
+
+
+prop_type_delete({name} [, {props}])			*prop_type_delete()*
+		删除名为 {name} 的文本属性类型。如果仍存在使用此类型的文本属
+		性，这些属性将失效，且无法通过类型名删除。
+
+		{props} 可包含 "bufnr" 字段。给出时，删除指定缓冲区内的属性类
+		型，而非全局属性类型。
+
+		找不到名为 {name} 的文本属性类型时，不报错。
+
+		也可用作 |method|: >
+			GetPropName()->prop_type_delete()
+<
+		返回类型: 无
+
+
+prop_type_get({name} [, {props}])			*prop_type_get()*
+		返回名为 {name} 的文本属性类型的配置字典。字段同
+		|prop_type_add()|。
+		找不到名为 {name} 的文本属性类型时，返回空字典。
+
+		{props} 可包含 "bufnr" 字段。给出时，使用指定缓冲区内的属性类
+		型，而非全局属性类型。
+
+		也可用作 |method|: >
+			GetPropName()->prop_type_get()
+<
+		返回类型: dict<any>
+
+
+prop_type_list([{props}])				*prop_type_list()*
+		返回全部属性类型名组成的列表。
+
+		{props} 可包含 "bufnr" 字段。给出时，使用指定缓冲区内的属性类
+		型，而非全局属性类型。
+
+		返回类型: list<string> 或 list<any>
+
+
+==============================================================================
+3. 文本变更时					*text-prop-changes*
+
+Vim 会尽量保持文本属性绑定在原始文本上。插入或删除文本后，属性会相应移动。
+
+删除文本导致某个文本属性不再包含任何文本时，该属性被删除。但定义为零宽度的文本
+属性，除非整行都被删除，仍会保留。多行替换命令合并行时，被删除行上的虚拟文本属
+性会自动转移到合并后的目标行。
+								*E275*
+缓冲区卸载后，所有文本属性都会消失。文本属性无法存入文件。只能重新创建。缓冲区
+隐藏时，文本与文本属性都会保留。无法向已卸载的缓冲区添加文本属性。
+
+使用替换模式时，即使字符内容发生变化，文本属性仍保持在相同字符位置。
+
+文本发生变更后，如需更新文本属性，可用 |listener_add()| 注册回调。例如，拼写检
+查插件可在回调里更新变更文本中的拼写错误。Vim 会自动移动变更文本下方的属性，使
+其仍然高亮相同的文本，因此这些属性无需更新。
+
+							*text-prop-cleared*
+以下情况下，文本属性的列位置不会自动更新或复制: ~
+
+- 通过 |setline()| 或 Lua、Tcl 或 Python 等接口设置行内容时，Vim 无法得知哪些
+  文本被增删。
+- 使用 |:move| 这类将整行文本移出原有位置的命令。
+
+
+ vim:tw=78:ts=8:noet:ft=help:norl:

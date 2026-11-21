@@ -1,0 +1,453 @@
+*gui_w32.txt*	适用于 Vim 9.2 版本。  最近更新: 2026年7月
+
+
+		  VIM 参考手册	by Bram Moolenaar
+				译者: Dasn、Willis
+
+
+Vim 的 Win32 图形用户界面				*gui-w32* *win32-gui*
+
+1. 启动图形界面			|gui-w32-start|
+2. 设置 Vim 为默认的编辑器	|vim-default-editor|
+3. 使用剪贴板			|gui-clipboard|
+4. 命令行命令			|gui-shell-win32|
+5. 特殊颜色			|win32-colors|
+6. Windows 对话框和浏览器	|gui-w32-dialogs|
+7. 命令行参数			|gui-w32-cmdargs|
+8. 杂项				|gui-w32-various|
+
+其它相关文章:
+|gui.txt|	所有的 GUI 版本的通用功能
+|os_win32.txt|	Win32 版本特有的功能
+
+==============================================================================
+1. 启动图形界面						*gui-w32-start*
+
+Vim 的 Win32 GUI 版本无论以何种方式启动，或文件名如何更改。总会以真正的图形界
+面运行。
+
+图形界面程序始终在 Windows 子系统里运行。大多数外壳在启动 gvim 后会立即返回提
+示符。如果没有返回，应该使用 "start" 命令启动: >
+	start gvim [option] file ..
+<							*E988*
+控制台版本也可通过 |-g| 选项来执行 gvim.exe 以启动 GUI: >
+	vim -g [options] file ..
+此选项需要 gvim.exe 和 vim.exe 位于同一个目录，而且编译时必须启用 GUI 支持。
+
+也可在控制台版本里通过 `:gui` 命令启动 GUI。不过这仍然属于实验特性，且编译时必
+须启用 GUI 支持。此命令会利用会话文件，在 GUI 版 Vim 中重建当前控制台 Vim 的状
+态。
+
+注意: 所有字体 (包括粗体和斜体) 必须大小相同！！！否则文本可能会消失或显示会混
+乱。Vim 并不会检查字体大小。这里的字体大小以 "像素" 为单位计算。要 注意 不同字
+体即使标称相同的 "点" 数，其像素尺寸也可能不同。此外，与字体位置相关的属性 (如
+ascent 和 descent) 也必须保持一致。(ascent 和 descent 是用来说明字体高度的两种
+属性，分别指字体基线到字符最高点和最低点的垂直距离，具体可以参考相关资料 译者)
+
+Win32 GUI 版本提供一个额外的菜单项: "编辑/选择字体"，它会弹出 Windows 标准字体
+选择对话框。
+
+Win32 GUI 上，无法设置菜单高度。
+
+							*gui-win32-maximized*
+如果希望 Vim 启动时自动最大化窗口，可将以下命令加入 vimrc 或 gvimrc 文件: >
+	au GUIEnter * simalt ~x
+<
+
+插件方式使用 Vim					*gui-w32-windowid*
+
+gvim 正常启动时，会创建独立的顶层窗口。如果启动 Vim 时传入命令行选项
+|--windowid| 和一个十进制或十六进制参数，Vim 会将其作为窗口 ID，并在该窗口下创
+建子窗口。这样，Vim 就可以嵌入其他应用程序中作为插件使用。该功能主要面向程序员
+接口，必须配合相应的宿主应用才能正确启动 Vim。
+
+==============================================================================
+2. 设定 Vim 为默认的文本编辑器				*vim-default-editor*
+
+要设定 Vim 为某一类文件的默认编辑器:
+1. 打开 Windows 资源管理器
+2. 选择 查看/选项 -> 文件类型
+3. 为每种希望由 gvim 处理的文件类型指定 gvim 的路径。(在 "文件类型" 选项卡中，
+   也可用 3 个空格来为无扩展名的文件指定关联程序)。
+   在 "操作" 列表框的 open 一栏中输入: >
+	gvim "%1"
+<   这里加上引号可以确保程序能够正确处理包含空格的文件名。
+   也可用: >
+	gvim "%L"
+<   这样在某些情况下可以避免处理短文件名 (8.3 格式)，但并不能保证在所有场景下
+   都适用。
+
+双击鼠标打开文件时，Vim 会切换到文件所在目录。
+
+如果希望 Vim 打开文件时全屏，可在 Open 一栏中输入: >
+	gvim -c "simalt ~x" "%1"
+
+还有一个方法，也适用于 Vim 被安装到其他目录时 (如安装了新版本的 Vim):
+1. 选定想用 Vim 打开的文件
+2. <Shift-F10>
+3. 选 "打开方式……" 菜单项
+4. 点击 "其它……"
+5. 浏览到 Vim 的 (新) 位置并点击 "打开"
+6. 在 "始终使用该程序打开这些文件" 划勾
+7. <OK>
+
+						*send-to-menu* *sendto*
+也可将 Vim 安装到 "发送到" 菜单:
+1. 打开资源管理器
+2. 浏览到用户 sendto 目录:
+   C:\Users\%user%\AppData\Roaming\Microsoft\Windows\SendTo。
+3. 点右键，选 "新建->快捷方式"
+4. 在快捷方式向导程序里，点击 "浏览"，找到 VIM/GVIM，程序会得到其完整路径。
+
+使用 "发送到 Vim" 时，Vim 会切换到该文件所在的目录。注意，在某些 Windows 版本
+上，长目录名会被转换为其短 (MS-DOS) 形式。这是 Windows "发送到" 功能本身的限
+制。
+
+						*notepad*
+可用 gvim.exe 替换 notepad.exe，但是这样可能会带来许多副作用。有些程序依赖于
+notepad 的特定参数。比如，有的程序调用 "notepad -p" 来打印文件，而这些参数在
+gvim 中并不适用。所以，通常不建议替换 notepad，而应通过其他方式启动 gvim。
+
+						*win32-popup-menu*
+有一种更直接的方法是安装 "用 Vim 编辑" 选项到右键弹出菜单，这样就可以用 vim
+编辑任何文件了。
+
+这种方法可以和前面提到的默认打开方式 (文件关联) 同时使用。区别在于: 如果把 Vim
+设定为默认打开程序，双击该类型的文件时，系统会直接使用 Vim 打开。而如果仅在右
+键菜单中添加 "用 Vim 编辑"，则仍然可以保留原有的文件关联，双击文件时仍由原程序
+打开，需要用 Vim 编辑时，只需右键点击文件并选择 "用 Vim 编辑" 即可。例如: 可以
+将 "*.mak" 文件关联到 make 程序，这样双击文件时会执行 make，而通过右键选择 "用
+Vim 编辑" 则可在 Vim 中编辑该 Makefile。
+
+选择任何文件并按右键时，会看到菜单选项 "用 Vim 编辑"。选择该菜单项会用 gvim 打
+开选择的文件。而如果选择了多个文件，会发现弹出菜单里出现两个与 gvim 相关的菜单
+项:
+"用多个 Vim 编辑"	-- 为所选的每个文件分别打开一个 gvim 实例
+(译者注: 原文如此，在 8.2.3243 补丁及更新版本里，此菜单项被替换为
+"用 Vim 标签页编辑"	-- 用单一 gvim 实例，为所选的每个文件打开一个新标签页)
+"用单个 Vim 编辑"	-- 用单一 gvim 实例打开所选的全部文件
+如果已经有一个 gvim 正在运行，还会多出一个菜单项:
+"用已有的 Vim 编辑"	-- 用正在运行的 gvim 来编辑所选文件
+
+"用已有的 Vim 编辑" 菜单项可通过注册表关闭，在 HKLM\Software\Vim\Gvim 里添加名
+为 DisableEditWithExisting 的项目，可以使用任意值。
+						*install-registry*
+通过运行安装程序 "install.exe"，可以方便地添加 "用 Vim 编辑" 菜单项。该程序还
+会在注册表中写入所需的相关键值。
+
+当然，也可以手动修改注册表，步骤如下，但过程较为繁琐！建议尽量使用 install.exe
+程序完成。
+
+1. 打开注册表编辑器 "regedit.exe"。
+2. 加入以下键值:
+   键		值名		            值~
+   HKEY_CLASSES_ROOT\CLSID\{51EEE242-AD87-11d3-9C1E-0090278BBD99}
+		{default}		    Vim Shell Extension
+   HKEY_CLASSES_ROOT\CLSID\{51EEE242-AD87-11d3-9C1E-0090278BBD99}\InProcServer32
+		{default}		    {path}\gvimext.dll
+		ThreadingModel		    Apartment
+   HKEY_CLASSES_ROOT\*\shellex\ContextMenuHandlers\gvim
+		{default}		    {51EEE242-AD87-11d3-9C1E-0090278BBD99}
+   HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Shell Extensions\Approved
+		{51EEE242-AD87-11d3-9C1E-0090278BBD99}
+					    Vim Shell Extension
+   HKEY_LOCAL_MACHINE\Software\Vim\Gvim
+		path			    {path}\gvim.exe
+   HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Uninstall\vim 8.2
+		DisplayName		    Vim 8.2: Edit with Vim popup menu entry
+		UninstallString		    {path}\uninstal\.exe
+
+   请用实际的路径替换 {path}。
+   不要输入 {default}，它表示键本身的默认值。
+
+要从弹出菜单里删除 "用 Vim 编辑"，只要在注册表里删除上述各项即可。也可用卸载程
+序 "uninstall.exe"，或通过 "控制面板" 里的 "添加/删除程序" 来完成。
+
+如果发现用 "添加/删除程序" 卸载 gvim 之后，其它类型文件的关联出错，可以手动修
+改回来 (同上，可用 "资源管理器")。这种情况好像只出现在某些版本的 Windows NT 上
+(Windows 的漏洞？)。具体解决办法是:
+1. 找到文件的类型名。打开注册表编辑器，在 \\HKEY_CLASSES_ROOT 下搜索扩展名。
+2. 在资源管理器里，选择 查看/选项 -> 文件类型。找到该类型文件，单击 "编辑"。
+   在 "操作" 列表框中选择应被设为默认的选项 (正常情况下是 "open")，然后单击
+   "设置为默认值" 按钮。
+
+
+将 Vim 加入 "打开方式..." 关联菜单			*win32-open-with-menu*
+
+使用 Vim 安装程序时，可以选择将 Vim 加入 "打开方式..." 菜单，这样就可以通过右
+键菜单调用 Vim 来编辑大多数文件，不过，不是所有文件都可用 (原因不明)。因而 "用
+Vim 编辑" 菜单选项还是有用的。
+
+此选项的另一个优点是可以在 Internet Explorer 里直接调用 Vim 来编辑 HTML 文档。
+要启用此功能，可在 "工具" 菜单的 "Internet 选项" 里，切换到 "程序" 选项卡，然
+后在 "HTML 编辑器" 里选择 Vim。如果列表中未出现 Vim，可能是 Vim 安装存在问题。
+
+要手工安装，可以使用以下脚本:
+
+----------------------------------------------------------
+REGEDIT4
+
+[HKEY_CLASSES_ROOT\Applications\gvim.exe]
+
+[HKEY_CLASSES_ROOT\Applications\gvim.exe\shell]
+
+[HKEY_CLASSES_ROOT\Applications\gvim.exe\shell\edit]
+
+[HKEY_CLASSES_ROOT\Applications\gvim.exe\shell\edit\command]
+@="c:\\vim\\vim82\\gvim.exe \"%1\""
+
+[HKEY_CLASSES_ROOT\.htm\OpenWithList\gvim.exe]
+
+[HKEY_CLASSES_ROOT\*\OpenWithList\gvim.exe]
+
+----------------------------------------------------------
+
+请用 Vim 程序的实际位置替换 "c:\\vim\\vim82\\gvim.exe"。
+
+要删除此设置，可运行 Vim 卸载程序，或用 "regedit" 手动删除注册表中的相应键值来
+完成。
+
+==============================================================================
+3. 使用剪贴板						*gui-clipboard*
+
+Windows 提供剪贴板，可以把文本从其他程序 "剪" 下来，放到剪贴板里，也可以把剪贴
+板里的文本 "粘贴" 到别的程序里。在 Vim 里有多种办法完成这些操作。对于其它操作
+系统，请参阅 |gui-selections|。
+
+寄存器 "* 反映剪贴板里的内容。|quotestar|
+
+'clipboard' 选项值包括 "unnamed" 时，无名寄存器与 "* 共享内容。这样，在执行剪
+切或粘贴时，无需再在命令前加上 "*。如果仍无法正常使用，可以尝试在 'clipboard'
+选项内指定 "unnamedplus" 字符串。
+
+默认情况下，'guioptions' 选项里不含标志位 'a'。这意味着如果通过可视模式选中文
+本不会复制文本到剪贴板，只有使用剪贴板寄存器时才会。而当 'guioptions' 包含 'a'
+时，在选中文本的同时，内容会自动复制到剪贴板。
+
+							*mswin.vim*
+如果想用 CTRL-X，CTRL-C 和 CTRL-V 这些标准的 MS-Windows 操作方式，可用
+$VIMRUNTIME\mswin.vim 脚本。为此，可在 _vimrc 文件里加入以下命令: >
+	source $VIMRUNTIME/mswin.vim
+
+这样一来，CTRL-C 将被用作 "复制" 命令，而无法再用作中止操作。为此，可改用
+CTRL-Break。
+
+CTRL-Z 用于撤销。这意味着无法用此快捷键挂起 Vim，为此，可改用 |:suspend| (如果
+支持的话)。
+
+						*CTRL-V-alternative* *CTRL-Q*
+CTRL-V 用于 "粘贴"，而无法再用于启动 "可视列块" 的选择模式，为此，可改用
+CTRL-Q。此外，在插入模式和命令行模式中，也可用 CTRL-Q 来代替 CTRL-V。但需要注
+意，在终端环境里，CTRL-Q 通常用于流控制，因此该键无效。
+
+备注: 剪贴板支持仍有一些缺陷。见 |todo|。
+
+==============================================================================
+4. 外壳命令						*gui-shell-win32*
+
+Vim 会在另一个窗口中执行外部命令，从而可以运行任意命令。外部命令会在独立环境中
+运行，这与在 DOS 提示符下运行命令时相同。
+
+							*win32-vimrun*
+Vim 通过调用 "vimrun" 命令来间接执行外部命令。因此，vimrun.exe 必须包含在搜索
+路径内，或者与 Vim 可执行程序在同一个目录下才能工作。如果找不到 "vimrun"，Vim
+会直接执行命令，但在程序运行完毕后，DOS 窗口会被立即关闭。
+警告: 如果通过 "X" 按钮关闭外部命令窗口，并在弹出的终止确认对话框中选择“"是"，
+Vim 也会随之关闭！(使用 `:!start` 以异步方式运行外部命令时，则不会出现这种情
+况。)
+
+Vim 使用的命令提示符窗口采用在 "控制面板" 里给 "Console" 预先定义的设置。
+
+							*win32-!start*
+通常 Vim 会等待外部命令执行完成后再继续执行后续工作 (这有助于完整捕获外壳命令
+的输出)。如果希望 Vim 启动命令后立即返回，可用: >
+	:!start [/min] {command}
+可选的 "/min" 参数会使窗口最小化。
+
+==============================================================================
+5. 特殊颜色						*win32-colors*
+
+在 Win32 上，可以使用标准 DOS 颜色。参见 |dos-colors|。
+
+此外，也可使用系统配置的颜色。以 Sys_XXX 的形式出现，其中 XXX 是相应的系统颜色
+名称 (对大小写不敏感)，如下表所示: (更翔实的描述可以参看 Win32 手册)。
+
+Sys_3DDKShadow		Sys_3DFace			Sys_BTNFace
+Sys_3DHilight		Sys_3DHighlight			Sys_BTNHilight
+Sys_BTNHighlight	Sys_3DLight			Sys_3DShadow
+Sys_BTNShadow		Sys_ActiveBorder		Sys_ActiveCaption
+Sys_AppWorkspace	Sys_Background			Sys_Desktop
+Sys_BTNText		Sys_CaptionText			Sys_GrayText
+Sys_Highlight		Sys_HighlightText		Sys_InactiveBorder
+Sys_InactiveCaption	Sys_InactiveCaptionText		Sys_InfoBK
+Sys_InfoText		Sys_Menu			Sys_MenuText
+Sys_ScrollBar		Sys_Window			Sys_WindowFrame
+Sys_WindowText
+
+较为常用的取值如下:
+	Sys_Window	    正常窗口背景颜色
+	Sys_WindowText      正常窗口文字颜色
+	Sys_Highlight       加亮背景颜色
+	Sys_HighlightText   加亮文字颜色
+
+Vim 还提供了以下额外可用的颜色:
+Gray、Grey、LightYellow、SeaGreen、Orange、Purple、SlateBlue、Violet。
+
+								*rgb.txt*
+最后，还可使用一个默认颜色列表。详见 |:colorscheme|。这些颜色最初在
+$VIMRUNTIME/rgb.txt 里定义，现在则在 $VIMRUNTIME/colors/lists/default.vim 中初
+始化的 |v:colornames| 变量里定义。
+
+==============================================================================
+						*gui-w32-dialogs* *dialog*
+6. Windows 对话框和浏览器
+
+Vim 的 Win32 GUI 版本在部分操作中使用标准窗口组件，而在其他方面则沿用与控制台
+版本共享的传统界面。
+
+
+6.1 对话框
+
+"confirm" 系列 (即 'confirm' 选项，|:confirm| 命令和 |confirm()| 函数) 显示的
+对话框基于 GUI 而不是像其它版本那样基于控制台。'guioptions' 选项中的标志位 'c'
+可以改变此行为。
+
+6.2 文件浏览器
+
+在文件编辑命令前加上 ":browse" 前缀时，Vim 会弹出文件选择窗口，用于选择现存文
+件。参见 |:browse|。
+
+6.3 可撕菜单 (Tearoff Menus)
+
+Vim 的 Win32 GUI 模拟了 Motif 风格的 "可撕菜单"。在每个菜单顶部会显示一个 "剪
+刀" 标志。选择后会弹出一个浮动窗口，其中的按钮与菜单项一一对应。直接点击这些
+按钮即可执行相应命令 (包括子菜单)，无需每次都在菜单栏中逐级寻找。
+当需要反复使用位于多级子菜单中的命令时，此功能尤为方便。
+可撕菜单分离后可移动到任何位置，并且总会显示在 Vim 主窗口之上。它们也可像普通
+窗口一样关闭；在退出 gvim 时，这些窗口也会被自动关闭。
+
+							*:tearoff* *:te*
+:te[aroff] {name}	撕下菜单 {name}。指定菜单中必须至少包含一个菜单项，但
+			该菜单不必在主菜单栏中显示 (见 |win32-hidden-menus|)。
+
+例如: >
+	:tearoff File
+会撕下 "File" 菜单 (如有)。
+>
+	:amenu ]Toolbar.Make	:make<CR>
+	:tearoff ]Toolbar
+会创建一个不在主菜单栏中显示的浮动菜单。
+
+注意: 以 ']' 开头的菜单名不会在菜单栏中显示。
+
+==============================================================================
+7. 命令行参数						*gui-w32-cmdargs*
+
+命令行参数与控制台版本的行为一致，见 |win32-cmdargs|。
+
+==============================================================================
+8. 杂项							*gui-w32-various*
+
+							*gui-w32-printing*
+菜单项 "文件/打印" 会打印出经过语法高亮的文本，参见 |:hardcopy|。如果只想打印
+原始文本，并且已经安装好了默认的打印机，可用: >
+	:w >>prn
+
+Vim 支持许多 MS-Windows 的标准特性。部分特性详见其他文档: 'mouse'，
+|win32-hidden-menus|。
+
+							*drag-n-drop-win32*
+可将一个或多个文件拖放到 Vim 窗口里，Vim 会按常规方式打开这些文件。参见
+|drag-n-drop|。
+
+							*:simalt* *:sim*
+:sim[alt] {key}		模拟 Alt-{key} 组合键。
+			{仅适用于 Win32 版本}
+			注意: ":si" 意味着 ":s" 带 "i" 标志位。
+
+正常情况下，为了增加可用的键映射数量，Vim 会控制所有 Alt-{key} 组合键。但是这
+与用 Alt-{key} 访问菜单的标准方法会引起冲突。
+将 'winaltkeys' 选项设为 "yes" 是个快速解决方法。但会屏蔽所有 Alt 键映射。另一
+种方法是将该选项设为 "menu"。此时菜单快捷键由 Windows 管理，而其他 Alt 键仍可
+自定义映射。不过，这种方式会依赖当前的窗口状态。
+:simalt 命令解决这个问题的方法是告知 Vim (此时 'winaltkeys' 不要设为 "yes") 模
+拟 Windows 风格的 Alt 按键行为。这样可以在映射 Alt 组合键 (或其他按键) 时，同
+时触发标准 Windows 操作。下面是一些例子: >
+
+	:map <M-f> :simalt f<CR>
+Alt-F 映射此时会模拟按键 Alt 和 F，从而会弹出 "文件" 菜单 (假定使用了缺省
+menu.vim) >
+	:map <M-Space> :simalt ~<CR>
+Alt-Space 映射此时会弹出 Vim 窗口的系统菜单。注意: 在 simalt 命令里，~ 代表
+<Space> (空格) 字符。 >
+	:map <C-n> :simalt ~n<CR>
+CTRL-N 映射此时会模拟 Alt-Space + N。也就是打开窗口的系统菜单，然后按 N，这样
+就会最小化 Vim 窗口。
+
+备注 菜单快捷键可能因使用的语言而异。
+
+						*intellimouse-wheel-problems*
+如果智能鼠 (Intellimouse) 滑轮导致 Vim 无法接收输入，可访问:
+	ControlPanel - Mouse - Wheel - UniversalScrolling - Exceptions
+
+然后将 gvim 加入其中的应用列表。这个问题仅存在于智能鼠驱动程序 2.2 版本，并且
+仅在打开 "Universal Scrolling" 时才会出现。
+
+
+XPM 支 持						*w32-xpm-support*
+
+GVim 可以在 MS-Window 上编译时加入 XPM 文件支持。|+xpm_w32|
+具体步骤可见 Make_mvc.mak 文件，从中查找 XPM。
+
+要测试 XPM 支持是否可用: >
+	:help
+	:let runtime = escape($VIMRUNTIME, ' \')
+	:exe 'sign define vimxpm icon=' .. runtime .. '\\vim16x16.xpm'
+	:exe 'sign place 1 line=1 name=vimxpm file=' .. expand('%:p')
+<
+可从 github 获取 vim16x16.xpm 文件:
+https://github.com/vim/vim/blob/master/runtime/vim16x16.xpm
+
+
+键 码 翻 译 策 略		*w32-experimental-keycode-trans-strategy*
+
+
+补丁 v8.2.4807 对 W32 GVIM 进行了修改，引入了实验性的键码翻译方法，旨在提供更
+多键盘快捷键，尤其是针对非标准键盘布局。为实现此支持，弃用了 Win API
+TranslateMessage() 调用，改用了 ToUnicode() Win API 调用来识别键码。此方法发现
+了此前 TranslateMessage() 实现掩盖的一些边角情况，每种情况都需要分别处理。因
+此，目前该功能被标为实验性，默认行为恢复到先前的 "传统" 键码翻译方法。
+
+关于 "实验性" 键码翻译方法的讨论可能还会持续一段时间。在此期间，如果因为恢复默
+认的 Win32 GVIM "传统" 键码翻译方法对用户造成不便，可在 vimrc 里打开 "实验性"
+翻译方法:
+>
+  :call test_mswin_event('set_keycode_trans_strategy', {'strategy': 'experimental'})
+<
+同样地，如果想回到 "传统" 键码翻译方法 (比如用作测试)，可用:
+>
+  :call test_mswin_event('set_keycode_trans_strategy', {'strategy': 'classic'})
+<
+还有一个办法 (此方法对 TINY GVIM 版本尤其有用，因为该版本不能调用
+test_mswin_event())，可将环境变量 VIM_KEYCODE_TRANS_STRATEGY 设为想要的值
+("experimental" 或 "classic")，要在 dos 提示符下覆盖缺省值，可用:
+>
+        set VIM_KEYCODE_TRANS_STRATEGY=experimental
+        gvim.exe
+<
+
+标题栏							*gui-w32-title-bar*
+
+从 Windows 11 开始，可启用 |'go-C'| 选项来定制 gVim 标题栏。
+
+打开该选项后，标题栏外观由两个高亮组控制:
+1. |hl-TitleBar|   -- 设置激活窗口的标题栏颜色。
+2. |hl-TitleBarNC| -- 设置非激活窗口的标题栏颜色。
+
+要采用系统缺省标题栏颜色，可设置颜色值为 `NONE`: >
+
+	hi TitleBar guibg=NONE guifg=NONE
+	hi TitleBarNC guibg=NONE guifg=NONE
+<
+
+ vim:tw=78:sw=4:ts=8:noet:ft=help:norl:

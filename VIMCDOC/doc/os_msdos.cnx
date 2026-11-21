@@ -1,0 +1,14 @@
+*os_msdos.txt*	适用于 Vim 9.2 版本。  最近更新: 2017年8月
+
+
+		  VIM 参考手册	by Bram Moolenaar
+				译者: Dasn、tocer
+
+
+					*msdos* *ms-dos* *MSDOS* *MS-DOS*
+本文过去描述了 Vim 的 MS-DOS 版本的特点。在 7.4.1399 补丁中，MS-DOS 的支持已被
+删除。如果还想使用，需要在此之前的版本。注意 MS-DOS 版本无法工作，因为内存不
+足。在较旧的系统上，DOS32 版本 (用 DJGPP) 可能还可使用。
+
+
+ vim:tw=78:ts=8:noet:ft=help:norl:

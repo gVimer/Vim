@@ -1,0 +1,243 @@
+*remote.txt*	适用于 Vim 9.2 版本。  最近更新: 2026年7月
+
+
+		  VIM 参考手册	by Bram Moolenaar
+				译者: Willis、tocer
+
+
+Vim 客户-服务器 通信					*client-server*
+
+1. 通用功能			|clientserver|
+2. X11 专用条目			|x11-clientserver|
+3. MS-Windows 专用条目		|w32-clientserver|
+4. 套接字服务器专用条目		|socketserver-clientserver|
+
+==============================================================================
+1. 通用功能						*clientserver*
+
+编译时加入 |+clientserver| 特性后，Vim 可作为命令服务器运行，接受客户端消息并
+执行。同时，Vim 也可作为客户端，向其他 Vim 服务器发送命令。
+
+可用以下命令行参数:
+
+     参数			意义	~
+
+   --remote [+{cmd}] {file} ...					*--remote*
+				在远程 Vim 服务端打开文件列表。无可用服务器
+				时，改在本地执行。
+				可选初始命令: +{cmd}，必须是可跟 "|" 的 Ex 命
+				令 (|:bar| 列出不可用的命令)。
+				命令行其余部分都被作为文件列表。所以，非文件参
+				数必须写在此参数前面。
+				无法用此方法编辑标准输入 |--|。
+				远程 Vim 窗口会被自动唤起。不希望如此可用 >
+				 vim --remote-send "<C-\><C-N>:n filename<CR>"
+<
+   --remote-silent [+{cmd}] {file} ...			*--remote-silent*
+				同上，但无可用服务器而需要本地编辑时，不报错。
+   --remote-wait [+{cmd}] {file} ...			*--remote-wait*
+				同 --remote，但等待远程关闭/卸载文件后再返回。
+   --remote-wait-silent [+{cmd}] {file} ...		*--remote-wait-silent*
+				同 --remote-wait，但无可用服务器时，不报错。
+							*--remote-tab*
+   --remote-tab			同 --remote，但用新标签页打开每个文件。
+							*--remote-tab-silent*
+   --remote-tab-silent		同 --remote-silent，但用新标签页打开每个文件。
+							*--remote-tab-wait*
+   --remote-tab-wait		同 --remote-wait，但用新标签页打开每个文件。
+
+						*--remote-tab-wait-silent*
+   --remote-tab-wait-silent	同 --remote-wait-silent，但用新标签页打开每个
+				文件。
+							*--servername*
+   --servername {name}		将当前 Vim 注册成为名为 {name} 的服务器。搭配
+				任意 --remote 系列命令时，则指定连接目标为服务
+				器 {name} 而非缺省名 (见下)。该服务名会转为大
+				写。套接字服务器模式下，可填写文件路径，详见
+				|socketserver-name|。
+							*--remote-send*
+   --remote-send {keys}		向远程服务器发送键序列 {keys} 后立刻退出。
+				{keys} 不通过映射。识别特殊键名，例如 "<CR>"
+				代表发送 CR 字符。
+							*--remote-expr*
+   --remote-expr {expr}		在远程服务器上执行 Vim 表达式 {expr}。结果写到
+				标准输出。
+							*--serverlist*
+   --serverlist			输出可用服务器名列表。
+							*--clientserver*
+   --clientserver {method}	指定客户-服务器通信后端实现机制 {method}。
+				可选值为 "socket"、"x11" 或 "mswin"。
+							*$VIM_CLIENTSERVER*
+				设置环境变量 "$VIM_CLIENTSERVER" 时，Vim 会将
+				其值视为 --clientserver 参数值。两者同时给出
+				时，以 --clientserver 参数为准。
+				{仅当编译时加入 |+X11| 和 |+socketserver| 特性
+				才有效，MS-Windows 只需 |+socketserver| 特性}
+
+
+示例 ~
+
+在已运行的 GVIM 服务器上编辑 "file.txt"。 >
+    gvim --remote file.txt
+
+在已运行名为 FOOBAR 的服务器上编辑 "file.txt"。 >
+    gvim --servername FOOBAR --remote file.txt
+
+在名为 "FILES" 的服务器上编辑 "file.txt"，该服务器不存在则自身成为名为 "FILES"
+的服务器: >
+    gvim --servername FILES --remote-silent file.txt
+
+错误写法。--remote 之后所有参数都视作文件名: >
+    gvim --remote --servername FOOBAR file.txt
+
+在远程服务器上编辑文件 "+foo" (注意 用 "./" 规避打头加号的特别含义)。 >
+    vim --remote ./+foo
+
+通知远程服务器 "BLA" 保存所有文件并退出。 >
+    vim --servername BLA --remote-send '<C-\><C-N>:wqa<CR>'
+
+
+服 务 器 名						*client-server-name*
+
+Vim 注册的服务器名缺省使用启动程序名 (gvim、egvim ...)，但可用 --servername 参
+数覆盖。指定名称已占用时，会自动追加后缀，直到找到空闲名称为止。例如在同一个 X
+服务器上，第二个 gvim 实例会命名为 "gvim1"。最终生效的服务器名可通过
+|v:servername| 获取。服务器名大小写不敏感，"gvim" 和 "GVIM" 重复。注意 套接字
+服务器存在若干差异，见 |socketserver-differences|。
+
+Vim 启动给出 --remote、--remote-wait 或 --remote-send 参数时，会按相同规则通过
+程序名和 --servername 参数值确定要访问的服务器名。准确匹配优先，否则会查找带数
+值后缀的首个可用服务器。不过，如果 --servername 值已带数值后缀，必须准确匹配。
+
+使用 --remote 或 --remote-wait 但找不到可用服务器时，Vim 会根据命令行其余参数
+自动启动并编辑文件。这样，无论是否有可用服务器，都可向 gvim 正常发送命令。
+
+--serverlist 参数会在标准输出 (stdout) 列出所有已注册的命令服务器，然后退出。
+注意使用套接字服务器时有若干限制，见 |socketserver-differences|。
+							*{server}*
+多个客户端函数使用 {server} 参数。空串在 Unix 上会默认使用缺省服务器名，即
+"GVIM"。而 MS-Windows 不支持空串用法。
+
+Win32 注意事项: 因为 MS-Windows 系统权限限制，Vim 服务器无法稳定唤起自身到前
+台。当客户端使用 --remote 和 --remote-wait 系列参数而服务器名以 "g" 开头时，客
+户端会尝试唤起服务器，此法更可靠 (译者注: --remote-send 和 --remote-expr 不唤
+起服务器，而 "g" 开头是判断 GUI 版本的简便办法)。
+
+
+远 程 编 辑
+
+--remote 会把后续参数拼接一条 |:drop| 命令并发送，其余如上所述。
+--remote-wait 同上，但等待所有文件完成编辑后再返回。通过 BufUnload 事件判断文
+件编辑完成。这意味着文件卸载也视作编辑完成。
+注意: --remote 和 --remote-list 参数会消耗命令行剩余所有参数。所有后续参数一律
+视作文件名，不能再放置选项！
+
+函 数
+								*E240* *E573*
+Vim 提供一批用于脚本化命令服务器的函数。完整文档见 |builtin.txt|，也可在以下函
+数名字上按 CTRL-] 跳转到相应函数的文档。
+
+    函数原型				     功能说明 ~
+    remote_startserver( name)		     启动服务器
+    remote_expr( server, string, idvar)      发送表达式
+    remote_send( server, string, idvar)      发送键序列
+    serverlist()			     获取可用服务器列表
+    remote_peek( serverid, retvar)	     检查是否有应答字符串
+    remote_read( serverid)		     读取应答字符串
+    server2client( clientid, string)	     发送应答字符串
+    remote_foreground( server)		     唤起服务器到前台
+
+也可参考 |CTRL-\_CTRL-N|，非常适合作为远程发送按键序列的前置切换键。
+|server2client()| 所需的 {clientid} 可用 `expand("<client>")` 获取。
+
+==============================================================================
+2. X11 专用条目						*x11-clientserver*
+				    *E247* *E248* *E251* *E258* *E277*
+
+客户端和服务器通过 X 服务器通信。必须指定 Vim 服务器所在的显示 (display)。通信
+依赖 X 原生权限检查，因此必须拥有在 X 服务器上创建窗口的权限。可跨系统通信。
+
+GUI Vim 缺省会在 X 服务器上注册服务器名 (在 X 根窗口的 'VimRegistry' 属性注册)
+外部可通过该名称发送指令。Vim 也可作为客户端，向同一个 X11 显示上的其他 Vim 实
+例发送指令。
+
+可访问 X11 显示的非 GUI Vim (即有 |xterm-clipboard| 支持) 也可作为命令服务器，
+只要通过 --servername 参数显式给出服务器名，或在编译时加入 |+autoservername|
+特性即可。
+
+空 --servername 参数会直接禁用命令服务器。
+
+要从第三方应用程序向 Vim 服务器发送命令，可阅读源代码 src/if_xcmdsrv.c。内含
+通信协议相关说明。
+
+==============================================================================
+3. Win32 专用条目					*w32-clientserver*
+
+所有 Win32 Vim 都可用作服务器，包括控制台版本。无需编译时加入 OLE。底层基于
+Windows 消息机制，因此全 Windows 系统通用。但仅支持本机内部通信。
+
+因为基于 MS-Windows 消息机制，第三方应用程序也可和 Vim 服务器通信。另一种交互
+方案是 OLE 接口 |ole-interface|。
+
+gvim 运行 --remote-wait 必须通过以下方法才能正常工作: >
+
+	start /w gvim --remote-wait file.txt
+<
+==============================================================================
+4. 套接字服务器专用条目			    *socketserver-clientserver*
+						    *E1564* *E1565* *E1566*
+
+注意: 9.2.511 补丁之前的 Vim 使用旧版套接字服务后端，与新版基于通道机制 + JSON
+的实现互不兼容。
+
+客户端与服务端内部通过通道完成通信。仅 Unix 系统支持传统通用客户-服务器通信命
+名方式。此时按以下顺序选择可用目录存放套接字:
+    1. "$XDG_RUNTIME_DIR/vim"，当环境变量 $XDG_RUNTIME_DIR 存在时。
+    2. "$TMPDIR/vim-[uid]"，其中 "[uid]" 为当前用户 uid。此目录会设置访问权限
+       为 700，即仅本人可读写。未设置 $TMPDIR时，默认使用 "/tmp"。
+
+						    *socketserver-name*
+指定服务器 id/名字时，该名可为通用名，也可为绝对或相对路径。以 "/" (绝对路径)
+或 "./" | "../" (相对路径) 开头的服务器 id 视作套接字路径。否则视作存放在上述
+公共临时目录下的套接字文件名。注意 服务器 id/名仅整体被识别为路径名时，才能包
+含斜杠 "/"，类似 "abc/dir" 这样的混合名称无效。此功能仅 Unix 可用。
+
+						    *socketserver-address*
+也可使用 |channel-address| 格式创建套接字服务器。地址需加 "channel:" 前缀 (该
+前缀会被自动忽略)。Unix、Windows 均支持，也是 Windows 唯一支持的套接字后端。
+受 |ch_listen()| 限制，TCP 套接字仅支持填写端口号。
+
+名称以 "name:" 开头时，启用老式服务名逻辑，"name:VIM" 等价于 "VIM"。
+
+除非 Vim 编译时加入了 |+autoservername| 特性，否则套接字服务器必须显式启动 (和
+X11 非 GUI 版本行为一致)。
+
+如果 Vim 崩溃或异常退出，套接字服务器不会自动删除套接字文件。遗留的套接字文件
+通常不影响使用，因为 Vim 检测到同名套接字名时，会先检查其是否仍对应某个进程，
+如果已失效，会直接重用该名称，无需生成新名称。此段说明仅适用于 Unix。
+
+						    *socketserver-differences*
+绝大多数功能与其他客户-服务器通信后端一致。
+
+不过，和 X11 或 MS-Windows 不同，服务器或客户端 id 不是 (以十六进制显示的) 数
+值，而是套接字文件绝对路径。名称为通道地址时，会附带 "a/" 前缀。服务器 id 可通
+过 |v:servername| 变量查看。
+
+使用 |--remote-wait| 时客户端 ID 格式为 "t/<数值>"，该格式为远程等待模式专用，
+不能当作通信地址使用。
+
+在 Unix 上，|--serverlist| 参数的行为与 X11 相同，但仅检查上述几个公共目录。如
+果套接字使用自定义路径 (即不在 |--serverlist| Vim 进程所用的 $XDG_RUNTIME_DIR
+或 <$TMPDIR 或 /tmp>/vim 下)，则不会被检测到。
+在 MS-Windows 上，|--serverlist|  参数不会输出任何内容。
+
+{仅当编译时开启 |+channel| 特性且在 Unix 或 Windows 平台上，才会自动启用
+|+socketserver| 特性}
+
+						    *socketserver-x11*
+Vim 编译时同时加入 |+socketserver| 和其他客户-服务器通信后端时，可在启动时通过
+|--clientserver| 参数指定使用的后端。省略时默认使用系统原生后端 (X11 或
+MS-Windows 消息机制)。使用套接字服务器后端的 Vim 实例无法与用其他后端的实例
+互通。
+
+ vim:tw=78:sw=4:ts=8:noet:ft=help:norl:

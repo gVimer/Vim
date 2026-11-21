@@ -1,0 +1,211 @@
+*os_haiku.txt*	适用于 Vim 9.2 版本。  最近更新: 2025年10月
+
+
+		  VIM 参考手册	by Bram Moolenaar
+				译者: Willis
+
+
+							*Haiku*
+本文描述了 Vim 的 Haiku 版本的特点。除了本文特别提到的之外，其他行为与一般
+Unix 版本的 Vim |os_unix.txt| 基本相同。
+
+Haiku 是受 BeOS 启发的开源操作系统，特别针对个人计算而设计。
+
+ 1. 通用			|haiku-general|
+ 2. 编译 Vim			|haiku-compiling|
+ 3. Haiku GUI			|haiku-gui|
+ 4. $VIM 目录			|haiku-vimdir|
+ 5. $USER_SETTINGS_DIR 目录	|haiku-user-settings-dir|
+ 6. 拖放			|haiku-dragndrop|
+ 7. 单一启动对多重启动		|haiku-launch|
+ 8. 字体			|haiku-fonts|
+ 9. meta 键修饰符		|haiku-meta|
+10. 鼠标键映射			|haiku-mouse|
+11. 色彩名			|haiku-colors|
+12. GUI 工具栏图像		|haiku-toolbar-images|
+13. 鸣谢			|haiku-support-credits|
+14. 漏洞和未完成事宜		|haiku-bugs|
+
+
+1. 通用							*haiku-general*
+
+缺省语法高亮主要用不同的前景色来高亮项目。特别适用于带深色背景配浅色文字的终端
+窗口。有些中灰背景 (如 (r,g,b)=(168,168,168)) 配黑色文字也很不错。
+
+
+2. 编译 Vim						*haiku-compiling*
+
+可用标准的 configure/make 方法编译 Vim。运行 ./configure 时不带参数或传递
+--enable-gui=haiku，就可在编译 Vim 时加入 Haiku GUI 支持。运行 ./configure
+--help 可以查看还有哪些可以打开/关闭的特性。
+
+Haiku 使用 "ncurses6" 作为终端库，因此，要成功编译 Haiku，需要从 HaikuDepot 安
+装 "ncurses6_devel" 包。然后在 ./configure 命令里加上 "--with-tlib=ncurses"。
+
+现在，用 "make" 来编译 Vim，然后用 "make install" 来安装。要和 Haiku 无缝集
+成，除了 GUI 版本之外，还应额外安装不带 GUI 的 Vim 程序。典型的编译命令是: >
+
+  ./configure --prefix=`finddir B_SYSTEM_NONPACKAGED_DIRECTORY` \
+    --datarootdir=`finddir B_SYSTEM_NONPACKAGED_DATA_DIRECTORY` \
+    --mandir=`finddir B_SYSTEM_NONPACKAGED_DIRECTORY`/documentation/man \
+    --with-tlib=ncurses
+  make clean
+  make install
+
+  ./configure --prefix=`finddir B_SYSTEM_NONPACKAGED_DIRECTORY`  \
+    --datarootdir=`finddir B_SYSTEM_NONPACKAGED_DATA_DIRECTORY` \
+    --mandir=`finddir B_SYSTEM_NONPACKAGED_DIRECTORY`/documentation/man \
+    --with-tlib=ncurses \
+    --disable-gui
+  make clean
+  make install
+
+
+3.  Haiku GUI						*haiku-gui*
+
+Vim 启动 GUI 的通常方式是以 gvim 或 vim -g 方式启动。带 GUI 的 vim 版本会自动
+判断是否从 Tracker 而非终端启动，如果是的话也会选用 GUI。不过，如果用
+"vim - </dev/null" 命令形式，现有的检测机制会失效。
+
+<Alt-Enter> 键可用来在普通受管窗口模式和全屏模式间切换。
+
+尚不可用的功能:
+
+- 不会在窗口之外生成鼠标释放事件。如果先选择文本，然后把光标移动出窗口并释放鼠
+  标按钮，就会注意到这个问题。此外，在拖动滚动条时，将光标移出窗口并释放鼠标按
+  键，也会有同样的问题。Vim 仍然认为用户在操作滚动条，从而不会更新屏幕。一个临
+  时解决办法是激活或去活窗口 (所以最好打开焦点跟随鼠标选项)。
+- 光标不会闪烁。
+- 在 Twitcher 中，用 <C-Tab-Up> 和 <C-Tab-Down> 切换 Vim 窗口不可行。这是因为
+  每个 gvim 窗口都是由独立实例管理的，它们完全不知道其他 Vim 进程的存在。
+
+
+4. $VIM 目录						*haiku-vimdir*
+
+$VIM 是 Vim 用来保存支持文件位置的环境变量名。其缺省值在编译时决定，可以通过以
+下方式查看其值: >
+
+  :version
+
+在 Haikuports 版本里，其值通常是 /boot/common/data/vim，而手动编译的版本其值为
+/boot/system/non-packaged/data/vim。如果不喜欢，可以自行设置 VIM 环境变量，或
+在 .vimrc 里设置 'helpfile': >
+
+  :if version >= 500
+  :    set helpfile=~/vim/runtime/doc/help.txt
+  :    syntax on
+  :endif
+
+
+5. $USER_SETTINGS_DIR 目录			*haiku-user-settings-dir*
+
+$USER_SETTINGS_DIR 是 Haiku 用于保存配置和设定文件位置的环境变量名。
+
+其值通常为 /boot/home/config/settings。
+
+
+6. 拖放							*haiku-dragndrop*
+
+文件和目录可被拖放到 Vim 图标 (除非用文件类型应用把 Vim 设为 "单一启动"，否则
+会启动新 Vim 会话) 或已打开的 Vim 窗口 (开始编辑文件)。拖放目录会切换 Vim 当前
+目录 |:cd| |:pwd|。如果拖放文件或目录时按住 SHIFT 键，Vim 会切换目录为首个放置
+项目所在的目录。启动新 Vim 会话时，无需按住 shift: Vim 的行为会和按住时一样。
+
+拖放文件时，会设置当前参数列表。|argument-list|
+
+
+7. 单一启动对多重启动					*haiku-launch*
+
+Vim 发布时，应用标志位 (FileTypes 首选项所见的) 设为多重启动。如果喜欢，也可以
+修改为单一启动。这样试图打开第二份 Vim 实例时，会用原来的 Vim 实例来打开文件。
+这既适用于 Tracker，也适用于命令行。不过，后者不支持非文件 (选项) 参数。单一启
+动的另一个缺点是即使编译时带了 GUI 支持，以非 GUI 方式运行的 Vim 实例也会在无
+警告的情况下忽略 "以 ... 方式打开" 请求。以 GUI 方式运行的 Vim 实例则没有这个
+问题。
+
+注意: 只有 GUI 版本才会有相应的 BApplication (因而会有应用标志位)。此节不适用
+于用户自行编译的不带 GUI 的版本。
+
+
+8. 字体							*haiku-fonts*
+
+设置字体的方式是 >
+
+  :set guifont=DejaVu_Sans_Mono/Book/12
+
+这里，第一部分指定字体家族，第二部分指定风格，而第三部分指定大小。家族和风格里
+的空格可用下划线代替。
+
+等宽字体提供最佳效果。Vim 会试图使用所有 B_FIXED_SPACING 模式的字体，但显然这
+不适用于比例字体 (尽管 BeBook 是这么说的)。
+
+要检验当前字体支持哪些字符编码，可用 >
+
+  :digraphs
+
+命令来列出各种字符及其 ISO Latin 1 编码。如果其中出现 "方框" 字符，或最后一个
+字符不是带点的 y，则说明此字体不支持相应的编码。
+
+如果指定的字体不可用，会改用系统固定宽度字体。
+
+以下命令会弹出 GUI 字体选择对话框: >
+
+  :set guifont=*
+
+
+9. meta 键修饰符					*haiku-meta*
+
+可通过左右 OPTION 键获取 META 键修饰符。因为 ALT (也就是 COMMAND) 键不会被传递
+给应用。
+
+
+10. 鼠标键映射						*haiku-mouse*
+
+Vim 将不同的鼠标按钮分别命名为 LeftMouse、MiddleMouse 和 RightMouse。如果使用
+缺省鼠标首选设定，这些名字确实对应现实情况。Vim 使用以下映射:
+
+    Button 1 -> LeftMouse，
+    Button 2 -> RightMouse，
+    Button 3 -> MiddleMouse。
+
+如果实际使用的鼠标少于 3 个按钮，可自行提供映射，将带修饰符 (可带多个) 的鼠标
+点击映射到其他鼠标按钮。例见 $VIM/macros/swapmous.vim。	|gui-mouse-mapping|
+
+
+11. 色彩名						*haiku-colors*
+
+Vim 提供若干内置色彩名。此外，还可以通过 |v:colornames| 定义额外的名字。详见
+|:colorscheme|。
+
+
+12. GUI 工具栏图像					*haiku-toolbar-images*
+
+工具栏图像的替换集合必须使用 PNG 格式，高度可自选。图像宽度会通过计算确定，以
+保证在一行中至少包含 32 个按钮单元。
+此图像必须以 $VIMRUNTIME/bitmaps/builtin-tools.png 名保存。关于按钮分配，详见
+|builtin-tools|。
+
+
+13. 鸣谢					*haiku-support-credits*
+
+Haiku 的移植版本基于许多人完成的 BeOS 版本的相关工作
+ - BeBox GUI 支持，1998 年版权所有，作者是 Olaf Seibert；
+ - R4 移植版本，1999 年七月，作者是 Richard Offer <richard@whitequeen.com>；
+ - 其它贡献者无法一一列出，但我们不会忘记他们的付出；
+ - Haiku 支持，2009 年四至五月，作者是 Siarzhuk Zharski <imker@gmx.li>。
+
+所有的改动和补丁均以 vim 许可证发布。
+
+深表感谢！
+
+
+14. 漏洞和未完成事宜					*haiku-bugs*
+
+此移植版本目前仍在开发中，离尽善尽美还相差甚远。关于各种漏洞报告、补丁和功能建
+议，欢迎使用 Vim 邮件列表或 Vim Github 库。
+
+邮件列表: https://www.vim.org/maillist.php
+Vim Github 库: https://github.com/vim/vim
+
+
+ vim:tw=78:ts=8:ft=help:norl:

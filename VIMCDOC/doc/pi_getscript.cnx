@@ -1,0 +1,482 @@
+*pi_getscript.txt*	适用于 Vim 9.2 版本。  最近更新: 2026年10月
+>
+		GETSCRIPT 参考手册 作者: Charles E. Campbell, Jr.
+<				译者: Willis
+
+Original Author:  Charles E. Campbell  <NcampObell@SdrPchip.AorgM-NOSPAM>
+	 (remove NOSPAM from the email address)
+					*GetLatestVimScripts-copyright*
+Copyright: (c) 2004-2012 by Charles E. Campbell	*glvs-copyright*
+	The VIM LICENSE (see |copyright|) applies to the files in this
+	package, including getscriptPlugin.vim, getscript.vim,
+	GetLatestVimScripts.dist, and pi_getscript.txt, except use "getscript"
+	instead of "Vim".  Like anything else that's free, getscript and its
+	associated files are provided *as is* and comes with no warranty of
+	any kind, either expressed or implied.  No guarantees of
+	merchantability.  No guarantees of suitability for any purpose.  By
+	using this plugin, you agree that in no event will the copyright
+	holder be liable for any damages resulting from the use of this
+	software. Use at your own risk!
+
+getscript 是一个能大幅简化获取脚本最新版本的流程的插件。输入 |:GLVS| 即可启动
+插件；插件会读取 <GetLatestVimScripts.dat> 数据文件 (见
+|GetLatestVimScripts_dat|) 并自动从 https://www.vim.org/ 下载配置列出的所有脚
+本的最新版本。
+
+(译者注: 译文中，插件专指 getscript 插件本身，而脚本指由 getscript 管理的其他
+插件。使用不同的术语以示区分)
+
+==============================================================================
+1. 目录					*glvs-contents* *glvs* *getscript*
+					*GetLatestVimScripts*
+
+	1. 目录...........................................: |glvs-contents|
+	2. GetLatestVimScripts -- 入门....................: |glvs-install|
+	3. GetLatestVimScripts 用法.......................: |glvs-usage|
+	4. GetLatestVimScripts 数据文件...................: |glvs-data|
+	5. GetLatestVimScripts 友好脚本...................: |glvs-plugins|
+	6. GetLatestVimScripts 自动安装...................: |glvs-autoinstall|
+	7. GetLatestViMScripts 选项.......................: |glvs-options|
+	8. GetLatestVimScripts 算法.......................: |glvs-alg|
+	9. GetLatestVimScripts 历史.......................: |glvs-hist|
+
+
+==============================================================================
+2. GetLatestVimScripts -- 入门				*getscript-start*
+						*getlatestvimscripts-install*
+
+VIM 发 布 提 供 的 版 本			*glvs-dist-install*
+
+Vim 7.0 并未包含提供示例配置模板的 GetLatestVimScripts.dist 文件。需要自行创
+建。参见 |GetLatestVimScripts_dat|。
+
+VIM SF NET 提 供 的 版 本			*glvs-install*
+
+备注: 只有首次通过下载 GetLatestVimScripts.tar.bz2 安装的用户，才需要执行最后
+一步 - 重命名或移动 GetLatestVimScripts.dist 文件。
+
+GetLatestVimScripts.dist 文件提供了示例配置模板，可以参照以建立自己的插件更新
+列表。只需保留文件开头两行 "关键" 内容，其余列出的脚本示例均可删除或修改。
+
+系统必需预装 wget 或 curl 工具，这样 GetLatestVimScripts 才能工作。
+
+	1. 如果获取的是压缩包，先进行:  gunzip getscript.vmb.gz
+	2. Unix 上:
+		vim getscript.vmb
+		:so %
+		:q
+		cd ~/.vim/GetLatest
+		mv GetLatestVimScripts.dist GetLatestVimScripts.dat
+		(然后编辑 GetLatestVimScripts.dat，以安装所需的插件列表 -- 见
+		|GetLatestVimScripts_dat|)
+
+	3. Windows 上:
+		vim getscript.vmb
+		:so %
+		:q
+		cd **path-to-vimfiles**/GetLatest
+		mv GetLatestVimScripts.dist GetLatestVimScripts.dat
+		(然后编辑 GetLatestVimScripts.dat，以安装所需的插件列表 -- 见
+		|GetLatestVimScripts_dat|)
+
+阻 止 加 载
+
+要使用其他插件，但出于某些原因不想启用本插件时，可在 |vimrc| 里加入: >
+:let g:loaded_getscriptPlugin = 1
+
+
+==============================================================================
+3. GetLatestVimScripts 用法				*glvs-usage* *:GLVS*
+
+除非另有定义， >
+
+	:GLVS
+
+会调用 GetLatestVimScripts()。如果其它插件定义了同名命令，那么也可以使用
+>
+	:GetLatestVimScripts
+<
+该插件会尝试从 http://vim.sourceforge.net/ 自动获取并更新脚本，并且在获取授权
+后，直接完成脚本的安装。为此，它会检查以下数据文件
+>
+	.vim/GetLatest/GetLatestVimScripts.dat                      (unix)
+<
+或 >
+	..任何安装目录..\vimfiles\GetLatest\GetLatestVimScripts.dat (windows)
+(见 |glvs-data|)，并检查 [.vim|vimfiles]/plugin 目录里的脚本内容 (见
+|glvs-plugins|)。
+
+下载后的脚本会存放于 ~/.vim/GetLatest (unix 上) 或
+..任何安装目录..\vimfiles\GetLatest (windows 上) 子目录。要使插件自动安装这些
+脚本，可在 <.vimrc> 里加入: >
+
+	let g:GetLatestVimScripts_allowautoinstall=1
+<
+数据文件 <GetLatestVimScripts.dat> 会自动更新，用于记录并同步已下载脚本的最新
+版本信息。(另见 |glvs-options|)
+
+
+==============================================================================
+4. GetLatestVimScripts 数据文件			*getscript-data* *glvs-data*
+						*:GetLatestVimScripts_dat*
+数据文件 <GetLatestVimScripts.dat> 的开头两行必须包含以下文字:
+>
+	ScriptID SourceID Filename
+	--------------------------
+<
+在开头两行之后，该文件的每行应包含三列数据；前两列是数值列，第三列是文本列。
+要查看数据文件格式的示例模版，可见 GetLatest/GetLatestVimScripts.dist 文件。
+该文件中，会忽略所有 #... 开头的内容，它们被视作注释。
+
+每行第一个数值列给出脚本的 ScriptID。用浏览器察看 http://vim.sf.net/ 里的
+脚本时，在点击脚本链接前会看到其地址形如:
+
+	http://vim.sourceforge.net/scripts/script.php?script_id=40
+
+这里 "40" 就是 ScriptID，GetLatestVimScripts 用它来下载对应脚本页面。该
+ScriptID 是插件初始上传时，vim.sf.net 自动分配的。
+
+每行第二个数值列给出脚本的 SourceID。SourceID 代表该脚本的上传次数，由
+vim.sf.net 记录；用来标记该脚本的更新时间。将 SourceID 手动设置为 1 会强制使
+GetLatestVimScripts 判定当前脚本版本已过期。
+
+具体来说，插件会从 vim.sf.net 的相应脚本页面提取 SourceID。一旦该远程值大于数
+据文件保存的本地值，该脚本会被自动重新下载 (见 |GetLatestVimScripts_dat|)。
+
+如果脚本作者在脚本中包含了特殊格式的注释行，插件会用该脚本提供的指示来自动更新
+数据文件，包括添加所需的依赖脚本。例如，假定脚本里给出以下注释行: >
+
+	" GetLatestVimScripts: 884  1 :AutoInstall: AutoAlign.vim
+
+该注释行告诉插件检查 #884 Vim 脚本，并且说明该脚本可自动安装。插件则会相应地根
+据该行来更新数据文件，自动加入下行 (除非该行已存在): >
+
+	884 1 :AutoInstall: AutoAlign.vim
+
+详见 |glvs-plugins|。插件因此提供了让脚本随时保持更新的完整自动化功能！
+
+摘要:
+
+  * 可选选项，打开时，插件会根据已安装脚本的指示来构造或附加到数据文件: >
+	let g:GetLatestVimScripts_allowautoinstall=1
+<
+  * 如果已下载的脚本包含以下一行注释 >
+	" GetLatestVimScripts: 884  1 :AutoInstall: AutoAlign.vim
+<    表示脚本作者允许该脚本被自动安装。并非所有脚本都支持自动安装，而此权限完
+    全由脚本作者决定。
+
+  * 如果数据文件包含以下一行 >
+	884 1 :AutoInstall: AutoAlign.vim
+<    代表用户同意插件自动安装相应脚本。也就是说，自动安装需要用户和脚本作者双
+    方授权。见 |GetLatestVimScripts_dat|。
+
+
+						*GetLatestVimScripts_dat*
+<GetLatestVimScripts.dat> 数据文件的范例文本:
+>
+    ScriptID SourceID Filename
+    --------------------------
+    294 1 :AutoInstall: Align.vim
+    120 2 Decho.vim
+     40 3 DrawIt.tar.gz
+    451 4 EasyAccents.vim
+    195 5 engspchk.vim
+    642 6 GetLatestVimScripts.vim
+    489 7 Manpageview.vim
+
+备注: 开头两行是必需的，但本质上只作为注释使用。
+
+==============================================================================
+5. GetLatestVimScripts 友好脚本		*getscript-plugins* *glvs-plugins*
+
+		(本节内容适用于脚本开发者)~
+
+当脚本作者在脚本的任意位置添加以下形式的注释时，本插件会识别并用于自动构建数据
+文件:
+>
+				 src_id
+				    v
+	" GetLatestVimScripts: ### ### 脚本名
+				^
+			    scriptid
+<
+作为脚本作者，应该加上引用脚本自身的一行注释行，如有需要依赖的其他脚本，也可以
+用相同格式来附加更多对应依赖脚本的注释行。
+
+多数脚本都支持自动安装。如果此脚本也支持 (见 |glvs-autoinstall|)，可在
+"脚本名" 前加上 :AutoInstall: 标记。
+>
+	                         src_id
+	                            v
+	" GetLatestVimScripts: ### ### :AutoInstall: yourscriptname
+	                        ^
+	                    scriptid
+<
+备注: :AutoInstall: 功能需要脚本作者和用户双方授权才能进行！~
+
+此时，插件会根据脚本中的注释行指示，自动更新用户数据文件
+(GetLatest/GetLatestVimScripts.dat)。这是一种自动获取脚本依赖的全部脚本的较为
+简便的方法。
+
+不过，作为脚本开发者，可能未必希望插件在下载更新时，意外覆盖自己尚未发布的辛苦
+工作成果。插件为此提供了一个方法:  把 >
+	0 0 当前脚本名
+<
+放入数据文件后，插件会跳过该脚本的注释行检查。既不会更新数据文件，也不会自动下
+载/覆盖脚本。如果包含了 :AutoInstall: 选项，这一点尤其重要。
+
+"0 0 当前脚本名" 使用的 "当前脚本名" 必须和脚本里的注释行里的名字保持一致！
+
+
+==============================================================================
+6. GetLatestVimScripts 自动安装			*getscript-autoinstall*
+						*glvs-autoinstall*
+
+插件现已支持 "AutoInstall" (自动安装)。并非所有脚本都支持自动安装。部分脚本可
+能有特殊安装需求 (请参阅这些脚本的 "install" (安装) 说明)。不过从整体来看，支
+持自动安装的脚本仍占大多数。
+
+要使脚本能被插件自动安装，数据文件中的注释域 (译者注: 指第三列，正常应包含脚本
+文件名) 须以下列文字开始 (前后允许有空格): >
+
+	:AutoInstall:
+<
+前后两个冒号是必需的，而且此关键字必须在注释 (脚本名) 域的开头。
+
+如果不想进行任何脚本的自动安装，在 <.vimrc> 里放入: >
+
+	let g:GetLatestVimScripts_allowautoinstall= 0
+<
+此变量缺省打开。打开自动安装时，名字包含以下后缀的文件会被相应地
+
+	---.tar.bz2  : 解压并用 untar 解包到 .vim / 目录
+	---.vba.bz2  : 解压到 .vim/ 目录，然后交给 vimball 处理
+	---.vmb.bz2  : 同上
+	---.vim.bz2  : 解压并移到 .vim/plugin 目录
+	---.tar.gz   : 解压和用 untar 解包到 .vim/ 目录
+	---.vba.gz   : 解压到 .vim/ 目录，然后交给 vimball 处理
+	---.vmb.gz   : 同上
+	---.vim.gz   : 解压并移到 .vim/plugin 目录
+	---.vba      : 移到 .vim/ 目录，然后交给 vimball 处理
+	---.vmb      : 同上
+	---.vim      : 移到 .vim/plugin 目录
+	---.zip      : 用 unzip 解压到 .vim/ 目录
+
+如果一个脚本只需要通过 untar/gunzip 解压，或是移动到插件目录等过程来放置其各个
+部件就可正常使用，该脚本就属于可自动安装。当然，Vimball 包总支持自动安装。
+
+什么时候脚本不能自动安装？以下举例说明:
+>
+	[.vim|vimfiles]/after/syntax/blockhl.vim
+<
+<blockhl.vim> 脚本提供 C/C++ 程序的块高亮；可如此获取:
+
+	https://www.vim.org/scripts/script.php?script_id=104
+
+目前，vim 的 after/syntax 只支持按文件类型命名的脚本 (对于 blockhl.vim，应该使
+用 after/syntax/c.vim)。所以，如果采用自动安装，可能会覆盖用户已有的
+after/syntax/c.vim 文件。
+
+一个解决方案是使用 <aftersyntax.vim> (需要将其换名为 after/syntax/c.vim) 以支
+持名为 after/syntax/c/ 的目录:
+
+	https://www.vim.org/scripts/script.php?script_id=1023
+
+该脚本允许在 after/syntax/c 子目录里，同时使用多个语法文件。不过，不能将
+aftersyntax.vim 捆绑打包进用于自动安装的 tar 包中，因为它包含的
+after/syntax/c.vim 同样会覆盖当前用户已有的 c.vim。
+
+
+==============================================================================
+7. GetLatestVimScripts 选项					*glvs-options*
+>
+	g:GetLatestVimScripts_wget
+<	缺省= "wget"
+		该变量会记住用于下载脚本的命令名。
+>
+	g:GetLatestVimScripts_options
+<	缺省= "-q -O"
+		该变量会记住 g:GetLatestVimScripts_wget 命令使用的选项。
+>
+	g:GetLatestVimScripts_allowautoinstall
+<	缺省= 1
+		该变量用于授权插件执行脚本自动安装。此外，脚本作者还必须显式声
+		明该插件支持自动安装 (通过脚本内部的 GetLatestVimScripts 注释
+		行中的 :AutoInstall: 关键字)。
+>
+	g:GetLatestVimScripts_autoinstalldir
+<	缺省= $HOME/.vim     (linux)
+	缺省= $HOME/vimfiles (windows)
+		自定义 :AutoInstall: 脚本的安装位置。但不影响 vimball 包的安装
+		位置。
+>
+	g:GetLatestVimScripts_scriptaddr
+<	缺省='https://www.vim.org/scripts/script.php?script_id='
+>
+	g:GetLatestVimScripts_downloadaddr
+<	缺省='https://www.vim.org/scripts/download_script.php?src_id='
+>
+	g:GetLatestVimScripts_bunzip2
+<	缺省= bunzip2
+		此变量会记住用于解压 .bz2 文件的命令名
+>
+	g:GetLatestVimScripts_bunzip3
+<	缺省= bunzip3
+		此变量会记住用于解压 .bz3 文件的命令名
+>
+	g:GetLatestVimScripts_gunzip
+<	缺省= gunzip
+		此变量会记住用于解压 .gz 文件的命令名
+>
+	g:GetLatestVimScripts_unxz
+<	缺省= unxz
+		此变量会记住用于解压 .xz 文件的命令名
+>
+	g:GetLatestVimScripts_unzip
+<	缺省= unzip
+		此变量会记住用于解压 .zip 文件的命令名
+
+备注: 通过变量来记录解压命令，能有效绕开跨平台兼容问题。例如，Windows 上可将这
+      些解压命令代理给 `wsl` 执行: >
+
+	let g:GetLatestVimScripts_bunzip2= "wsl -e bunzip2"
+	let g:GetLatestVimScripts_gunzip= "wsl -e gunzip"
+	let g:GetLatestVimScripts_unxz= "wsl -e unxz"
+	let g:GetLatestVimScripts_unzip= "wsl -e unzip"
+<
+==============================================================================
+8. GetLatestVimScripts 算法			*glvs-algorithm* *glvs-alg*
+
+Vim sourceforge 页面会动态分配 script-id，并以此为键生成对应脚本页面。在以
+下网页中:
+
+	https://www.vim.org/scripts/script.php?script_id=40
+
+页面里会包含一行，用于指定最新的 source-id (src_id)。这个源标识符 (source-id)
+是持续递增的，因此只要 src_id 大于插件记录的该脚本的本地 src_id 值，就说明该脚
+本有新版本可以下载。
+
+此时，插件会下载脚本，并更新内部数据库里的脚本 id、 源 id 以及脚本名。
+
+然后，AutoInstall 过程会:
+
+	将该文件从 GetLatest/ 移动到以下目录
+		Unix   : $HOME/.vim
+		Windows: $HOME\vimfiles
+	如果下载文件以 ".bz2" 结尾
+		用 bunzip2 进行解压
+	如果下载文件以 ".bz3" 结尾
+		用 bunzip3 进行解压
+	否则，如果下载文件以 ".gz" 结尾
+		用 gunzip 进行解压
+	如果产生的文件以 ".zip" 结尾
+		用 unzip 进行解压
+	否则，如果生成的文件以 ".tar" 结尾
+		用 tar -oxvf 进行解压
+	否则，如果生成的文件以 ".vim" 结尾
+		将其移动到 plugin 子目录
+
+
+==============================================================================
+9. GetLatestVimScripts 历史 (英文)	*getscript-history* *glvs-hist* {{{1
+
+v38 Feb 25, 2025 : * handles additional decompression option for .bzip3 files.
+v37 Sep 23, 2024 : * Support for the new vimball's .vmb extension (old .vba
+		     extension conflicted with visual basic).
+		   * Support for |glvs-autoinstall| in ftplugins and packages.
+		   * Allow platform driven customization of decompressing
+		     commands.
+v36 Apr 22, 2013 : * (glts) suggested use of plugin/**/*.vim instead of
+		     plugin/*.vim in globpath() call.
+		   * (Andy Wokula) got warning message when setting
+		     g:loaded_getscriptPlugin
+v35 Apr 07, 2012 : * (MengHuan Yu) pointed out that the script URL has
+		     changed (somewhat).  However, it doesn't work, and
+		     the original one does (under Linux). I'll make it
+		     yet-another-option.
+v34 Jun 23, 2011 : * handles additional decompression options for tarballs
+v33 May 31, 2011 : * using fnameescape() instead of escape()
+		   * *.xz support
+v32 Jun 19, 2010 : * (Jan Steffens) added support for xz compression
+v31 Jun 29, 2008 : * (Bill McCarthy) fixed having hls enabled with getscript
+		   * (David Schaefer) the acd option interferes with vimballs
+		     Solution: bypass the acd option
+v30 Jun 13, 2008 : * GLVS now checks for existence of fnameescape() and will
+		     issue an error message if it is not supported
+v29 Jan 07, 2008 : * Bram M pointed out that cpo is a global option and that
+                     getscriptPlugin.vim was setting it but not restoring it.
+v28 Jan 02, 2008 : * improved shell quoting character handling, cygwin
+		     interface, register-a bypass
+    Oct 29, 2007   * Bill McCarthy suggested a change to getscript that avoids
+                     creating pop-up windows
+v24 Apr 16, 2007 : * removed save&restore of the fo option during script
+                     loading
+v23 Nov 03, 2006 : * ignores comments (#...)
+                   * handles vimballs
+v22 Oct 13, 2006 : * supports automatic use of curl if wget is not
+                     available
+v21 May 01, 2006 : * now takes advantage of autoloading.
+v20 Dec 23, 2005 : * Eric Haarbauer found&fixed a bug with unzip use;
+                     unzip needs the -o flag to overwrite.
+v19 Nov 28, 2005 : * v18's GetLatestVimScript line accessed the wrong
+                     script! Fixed.
+v18 Mar 21, 2005 : * bugfix to automatic database construction
+                   * bugfix - nowrapscan caused an error
+                     (tnx to David Green for the fix)
+    Apr 01, 2005   * if shell is bash, "mv" instead of "ren" used in
+                     :AutoInstall:s, even though its o/s is windows
+    Apr 01, 2005   * when downloading errors occurred, GLVS was
+                     terminating early.  It now just goes on to trying
+                     the next script (after trying three times to
+                     download a script description page)
+    Apr 20, 2005   * bugfix - when a failure to download occurred,
+                     GetLatestVimScripts would stop early and claim that
+                     everything was current.  Fixed.
+v17 Aug 25, 2004 : * g:GetLatestVimScripts_allowautoinstall, which
+                     defaults to 1, can be used to prevent all
+                     :AutoInstall:
+v16 Aug 25, 2004 : * made execution of bunzip2/gunzip/tar/zip silent
+                   * fixed bug with :AutoInstall: use of helptags
+v15 Aug 24, 2004 : * bugfix: the "0 0 comment" download prevention wasn't
+                     always preventing downloads (just usually).  Fixed.
+v14 Aug 24, 2004 : * bugfix -- helptags was using dotvim, rather than
+                     s:dotvim.  Fixed.
+v13 Aug 23, 2004 : * will skip downloading a file if its scriptid or srcid
+                     is zero.  Useful for script authors; that way their
+                     own GetLatestVimScripts activity won't overwrite
+                     their scripts.
+v12 Aug 23, 2004 : * bugfix - a "return" got left in the distribution that
+                     was intended only for testing.  Removed, now works.
+                   * :AutoInstall: implemented
+v11 Aug 20, 2004 : * GetLatestVimScripts is now a plugin:
+                   * :GetLatestVimScripts command
+                   * (runtimepath)/GetLatest/GetLatestVimScripts.dat
+                     now holds scripts that need updating
+v10 Apr 19, 2004 : * moved history from script to doc
+v9  Jan 23, 2004 :   windows (win32/win16/win95) will use
+                     double quotes ("") whereas other systems will use
+                     single quotes ('') around the urls in calls via wget
+v8  Dec 01, 2003 :   makes three tries at downloading
+v7  Sep 02, 2003 :   added error messages if "Click on..." or "src_id="
+                     not found in downloaded webpage
+                     Uses t_ti, t_te, and rs to make progress visible
+v6  Aug 06, 2003 :   final status messages now display summary of work
+                     ( "Downloaded someqty scripts" or
+                       "Everything was current")
+                     Now GetLatestVimScripts is careful about downloading
+                     GetLatestVimScripts.vim itself!
+                     (goes to <NEW_GetLatestVimScripts.vim>)
+v5  Aug 04, 2003 :   missing an endif near bottom
+v4  Jun 17, 2003 :   redraw! just before each "considering" message
+v3  May 27, 2003 :   Protects downloaded files from errant shell
+                     expansions with single quotes: '...'
+v2  May 14, 2003 :   extracts name of item to be obtained from the
+                     script file.  Uses it instead of comment field
+                     for output filename; comment is used in the
+                     "considering..." line and is now just a comment!
+                   * Fixed a bug: a string-of-numbers is not the
+                     same as a number, so I added zero to them
+                     and they became numbers.  Fixes comparison.
+
+==============================================================================
+vim:tw=78:ts=8:noet:ft=help:fdm=marker

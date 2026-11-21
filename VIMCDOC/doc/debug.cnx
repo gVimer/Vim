@@ -1,0 +1,157 @@
+*debug.txt*	适用于 Vim 9.2 版本。  最近更新: 2025年9月
+
+
+		  VIM 参考手册	by Bram Moolenaar
+				译者: Willis
+
+
+调试 Vim						*debug-vim*
+
+本文档用于调试 Vim 程序自身，适用于 Vim 运行异常、崩溃等场景。
+要调试 Vim 脚本和函数等，见 |debug-scripts|。
+
+1. 用 gcc 和 gdb 定位崩溃位置			|debug-gcc|
+2. 定位内存泄漏					|debug-leaks|
+3. Windows 漏洞报告				|debug-win32|
+
+==============================================================================
+
+1. 用 gcc 和 gdb 定位崩溃位置				*debug-gcc* *gdb*
+
+如果 Vim 在执行某测试用例时崩溃，且使用 gcc 编译 Vim，可按以下步骤精崩溃代码位
+置。该方法同样适用于 MingW 工具。
+
+1. 编译 Vim 时加上 "-g" 选项 (可修改 src/Makefile，取消对应 "-g" 配置行的注
+   释)。同时禁用 "strip" (不安装该程序，或设置 "STRIP = /bin/true")。
+
+2. 执行以下命令 (将 "11" 替换成出错的实际测试用例编号): >
+	cd testdir
+	gdb ../vim
+	run -u unix.vim -U NONE -s dotest.in test11.in
+
+3. 等待 Vim 崩溃，gdb 会输出崩溃相关消息。
+
+4. 在 gdb 中输入以下命令查看调用栈: >
+	where
+<  要查看调用栈中其他层级的上下文 (将 "3" 换成调用栈中的某个位置编号): >
+	frame 3
+
+==============================================================================
+
+2. 定位内存泄漏					*debug-leaks* *valgrind*
+
+如果怀疑 Vim 存在内存泄漏，且使用的是 Linux 平台，可借助 valgrind 工具精确定位
+内存泄漏点。
+
+首先，修改 MAKEFILE，开启 EXITFREE 宏定义 (搜索该字段并取消注释)。
+
+用以下的命令启动 Vim 并做内存检测:
+>
+	valgrind --log-file=valgrind.log --leak-check=full ./vim
+
+备注: valgrind 下，Vim 运行速度会明显变慢。如果 .vimrc 配置复杂、插件繁多，启
+动时请耐心，可加 "--clean" 参数纯净启动。
+
+系统库函数本身常会产生少量泄漏 (如 getpwuid()、XtVaAppCreateShell())。无法完全
+避免此类泄漏，但只要泄漏字节数很少 (1 KB 以内)，可以忽略。
+
+==============================================================================
+
+3. Windows 漏洞报告					*debug-win32*
+
+如果 Vim 的 Windows 版本可以稳定复现崩溃，可按以下步骤收集信息，提交规范漏洞报
+告。
+
+
+3.1 通用前提 ~
+
+首先，必须获取可执行文件的调试器符号文件 (PDB): gvim.exe 对应 gvim.pdb，而
+vim.exe 对应 vim.pdb。PDB 文件需要和 EXE 版本、日期完全匹配，并从同一下载渠道
+获取。
+
+如果使用 Microsoft Visual C++ 编译器自行编译 Vim 程序，编译时会自动生成配套的
+PDB。
+
+如果有 Visual Studio，优先使用该工具调试，而不 VC Toolkit 和 WinDbg。
+
+对于其他编译器，应使用其配套的调试器: Cygwin 和 MinGW 编译器搭配 gdb (见上文
+|debug-gcc|)。
+
+
+								*debug-vs2005*
+3.2 用 Visual Studio 2005/Visual C++ 2005 Express 调试 Vim 崩溃 ~
+
+首先正常启动 vim.exe 或 gvim.exe，然后打开 Visual Studio (如果没有 Visual
+Studio，可按照 |get-ms-debuggers| 的指示获取免费版本 Visual C++ 2005 Express
+Edition)。
+
+在 Tools 菜单上点击 Attach to Process (附加到进程)。选中 Vim 进程。
+
+在 Vim 里复现崩溃。Visual Studio 此时会弹出对话框，提示 Vim 进程出现未处理异
+常。点击 Break，中断该进程并进入调试。
+
+Visual Studio 此时会弹出另一个对话框，显示没有加载符号文件，所以无法显示源代
+码。点击 OK。
+
+这时会打开若干窗口。在 Call Stack (调用栈) 窗口按鼠标右键。然后选择 Load
+Symbols (加载符号)。会弹出 Find Symbols (寻找符号) 对话框，从中选中存放
+(g)vim.pdb 的目录，选择 Open (打开)。
+
+此时，可看到完整调用栈，包含 Vim 的函数名和代码行号。双击任何一行都会弹出 Find
+Source (寻找源代码) 对话框。选中存放 Vim 源代码的目录 (如有)。
+
+如果无法自行进一步分析，可按 ":help bug-reports" 的步骤进行。将调用栈粘贴到漏
+洞报告中。
+
+如果有 Visual Studio 付费版本，可用 Debug 菜单保存 minidump (转储文件) 并随漏
+洞报告一并提交。minidump 体积很小 (<100KB)，保存了进程状态信息。
+Visual C++ 2005 Express Edition 不支持 minidump，也无法安装为 just-in-time (即
+时) 调试器。如果需要保存 minidump 或者需要即时调试器 (或 postmortem，事后调试
+器)，可用 WinDbg |debug-windbg|。
+
+								*debug-windbg*
+3.3 用 WinDbg 调试 Vim 崩溃 ~
+
+先按 |get-ms-debuggers| 下载安装 WinDbg。
+
+和 Visual Studio IDE 一样，可附加 WinDbg 到运行中的 Vim 进程。也可让系统在崩溃
+时自动激活 WinDbg，使之成为一个事后调试器。为此，可运行 "windbg -I"。
+
+要附加 WinDbg 到运行中的 Vim 进程，先启动 WinDbg，在 File 菜单上点击 Attach to
+Process (附加到进程)。选中 Vim 进程，然后点击 OK。
+
+然后，在 File 菜单上选择 Symbol File Path (符号文件路径)，然后添加 Vim PDB 文
+件所在目录到 sympath。如果有 Vim 源代码，可在 File 菜单上选择 Source File Path
+(源文件路径)，添加源代码目录。现在，就可在 WinDbg 中打开源文件并设置断点 (如有
+需要)，然后复现崩溃。WinDbg 会自动定位到崩溃所在的源码行。可通过 View 菜单检查
+调用栈、局部变量、监视窗口 (watch window) 等。
+
+如果 WinDbg 用作事后调试器，无需手动附加 WinDbg 到 Vim 进程。只需复现崩溃，
+WinDbg 就会自动启动。可用相同方法设置符号文件路径和源文件路径。
+
+要保存 minidump，可在 WinDbg 命令行上输入: >
+	.dump vim.dmp
+<
+							*debug-minidump*
+3.4 打开 Minidump ~
+
+可用 Visual Studio 或 WinDbg 打开 minidump 文件。
+
+在 Visual Studio 2005 中: 在 File 菜单上选择 Open，然后选择 Project/Solution。
+选中 .dmp 文件并打开。按 F5 启动调试。再按 |debug-vs2005| 指示设置符号文件路
+径。
+
+在 WinDbg 中: 在 File 菜单上选择 Open Crash Dump (打开崩溃转储)，再按
+|debug-windbg| 指示设置符号文件路径。
+
+							*get-ms-debuggers*
+3.5 获取 Microsoft 调试工具 ~
+
+Debugging Tools for Windows (Windows 调试工具) (含 WinDbg) 可从此处下载
+    https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-download-tools
+
+Visual C++ 2005 Express Edition 可从此处免费下载:
+    https://visualstudio.microsoft.com/
+
+=========================================================================
+ vim:tw=78:ts=8:noet:ft=help:norl:

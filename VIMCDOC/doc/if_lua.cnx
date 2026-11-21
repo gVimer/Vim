@@ -1,0 +1,508 @@
+*if_lua.txt*	适用于 Vim 9.2 版本。  最近更新: 2026年10月
+
+
+		  VIM 参考手册	by Luis Carvalho
+				译者: Willis
+
+
+Vim 的 Lua 接口						*lua* *Lua*
+
+1. 命令				|lua-commands|
+2. vim 模块			|lua-vim|
+3. 列表用户数据			|lua-list|
+4. 字典用户数据			|lua-dict|
+5. blob 用户数据		|lua-blob|
+6. 函数引用用户数据		|lua-funcref|
+7. 缓冲区用户数据		|lua-buffer|
+8. 窗口用户数据			|lua-window|
+9. luaeval 函数			|lua-luaeval|
+10. 动态调入			|lua-dynamic|
+
+{仅当 Vim 编译时加入 |+lua| 特性时才有效}
+
+==============================================================================
+1. 命令							*lua-commands*
+
+							*:lua*
+:[range]lua {chunk}
+			执行 Lua 代码块 {chunk}。
+
+示例:
+>
+	:lua print("Hello, Vim!")
+	:lua local curbuf = vim.buffer() curbuf[7] = "line #7"
+<
+
+:[range]lua << [trim] [{endmarker}]
+{script}
+{endmarker}
+			执行多行 Lua 脚本 {script}。
+			注意: 如果编译时没有加入 Lua 特性，此命令不能工作。要
+			避免错误，见 |script-here|。
+
+如果 "<<" 之后省略了 {endmarker}，{script} 结束后必须加上一个句号 '.'，类似于
+|:append| 和 |:insert| 命令。详见 |:let-heredoc|。
+
+这种形式的 |:lua| 命令主要用于在 Vim 脚本中嵌入 Lua 代码。
+
+示例:
+>
+	function! CurrentLineInfo()
+	lua << EOF
+	local linenr = vim.window().line
+	local curline = vim.buffer()[linenr]
+	print(string.format("当前行 [%d] 有 %d 个字符",
+		linenr, #curline))
+	EOF
+	endfunction
+<
+要查看运行中的 Lua 版本: >
+	:lua print(_VERSION)
+
+使用 LuaJIT 时，也可用: >
+	:lua print(jit.version)
+<
+
+							*:luado*
+:[range]luado {body}	在 [range] 行范围的每行执行 Lua 函数
+			"function (line,linenr) {body} end"，其中，函数参数
+			line 为每行的文本，不包含行尾的 <EOL>，linenr 为该行行
+			号。函数返回值为字符串时，用来替代该行的原始文本。缺省
+			范围 [range] 为整个文件: "1,$"。
+
+示例:
+>
+	:luado return string.format("%s\t%d", line:reverse(), #line)
+
+	:lua require"lpeg"
+	:lua -- 平衡括号文法:
+	:lua bp = lpeg.P{ "(" * ((1 - lpeg.S"()") + lpeg.V(1))^0 * ")" }
+	:luado if bp:match(line) then return "-->\t" .. line end
+<
+
+							*:luafile*
+:[range]luafile {file}
+			执行 Lua 文件 {file} 中的脚本。
+			整个参数被用作单个文件名。
+
+示例:
+>
+	:luafile script.lua
+	:luafile %
+<
+
+以上命令都会执行一段 Lua 代码块 (chunk)，或从命令行 (:lua 和 :luado)，或从文件
+(:luafile)，并可给出行范围 [range]。和 Lua 解释器类似，每个代码块都有独立作用
+域，命令之间仅通过全局变量可以共享。所有的 Lua 缺省库均可使用。此外，Lua 的
+"print" 函数输出会重定向到 Vim 消息区，"print" 参数之间会以空格而非制表符分
+隔。
+
+Lua 通过 "vim" 模块 (见 |lua-vim|) 来对 Vim 发出指令以及对缓冲区
+(|lua-buffer|) 和窗口 (|lua-window|) 进行管理。不过在 |sandbox| 中执行命令时，
+修改缓冲区内容、打开新缓冲区以及改变光标位置的过程都受到限制。
+
+
+==============================================================================
+2. vim 模块						*lua-vim*
+
+Lua 通过 "vim" 模块和 Vim 进行交互。输入行范围的首末行分别存入 "vim.firstline"
+和 "vim.lastline" 变量。该模块也包含用于查询缓冲区、窗口、当前行、Vim 调用和命
+令执行，以及其它各种操作的相关例程。
+
+	vim.list([arg])		返回空列表，或当 "arg" 为带有数值键 1, ..., n
+				的 Lua 表 (即 "sequence") 时，返回列表 l，对于
+				i = 1, .., n，l[i] = arg[i] (见 |List|)。忽略
+				非数值键。转换规则另见 |lua-eval|。示例: >
+				    :lua t = {math.pi, false, say = 'hi'}
+				    :echo luaeval('vim.list(t)')
+				    :" [3.141593, v:false], 'say' 被忽略
+<
+
+	vim.dict([arg])		返回空字典，或当 "arg" 为 Lua 表时，返回字典
+				d，对于所有 "arg" 中的字符串键 k，
+				d[k] = arg[k] (见 |Dictionary|)。数值键会被转
+				化为字符串。忽略其他非字符串键。转换规则另见
+				|lua-eval|。示例: >
+				    :lua t = {math.pi, false, say = 'hi'}
+				    :echo luaeval('vim.dict(t)')
+				    :" {'1': 3.141593, '2': v:false,
+				    :" 'say': 'hi'}
+<
+	vim.blob([arg])		返回空 blob，或当 "arg" 为 Lua 字符串时，返回
+				与作为字节字符串的 "arg" 等价的 blob。
+				例如: >
+				    :lua s = "12ab\x00\x80\xfe\xff"
+				    :echo luaeval('vim.blob(s)')
+				    :" 0z31326162.0080FEFF
+<
+	vim.funcref({name})	返回对应函数名 {name} 的函数引用 (参见
+				|Funcref|)。等价于 Vim 的 function()。
+
+	vim.buffer([arg])	"arg" 为数值时，返回缓冲区列表中编号为 "arg"
+				的缓冲区。"arg" 为字符串时，返回完整名或简短名
+				为 "arg" 的缓冲区。这两种情况下，如果找不到缓
+				冲区，会返回 'nil'。"arg" 不是数值或字符串但
+				"toboolean(arg)" 为 'true' 时，返回缓冲区列表
+				中的首个缓冲区，否则返回当前缓冲区。
+
+	vim.window([arg])	"arg" 为数值时，返回编号为 "arg" 的窗口，如果
+				找不到，返回 'nil'。"arg" 不是数值但
+				"toboolean(arg)" 为 'true' 时，返回首个窗口，
+				否则返回当前窗口。
+
+	vim.type({arg})		返回 {arg} 类型。等价于 Lua 的 "type" 函数，但
+				当 {arg} 是列表、字典、函数引用、缓冲区、窗口
+				时，分别返回 "list"、"dict"、"funcref"、
+				"buffer" 或 "window"。示例: >
+					:lua l = vim.list()
+					:lua print(type(l), vim.type(l))
+					:" list
+<
+	vim.command({cmds})	执行 {cmds} 中，一行或多行的 Ex 模式命令。
+				示例: >
+					:lua vim.command"set tw=60"
+					:lua vim.command"normal ddp"
+					lua << trim END
+					  vim.command([[
+					      new Myfile.js
+					      call search('start')
+					  ]])
+					END
+<
+	vim.eval({expr})	计算表达式 {expr} (见 |expression|)，把结果转
+				化为 Lua 格式并返回。Vim 字符串和数值被直接转
+				化为相应的 Lua 字符串和数值类型。Vim 列表和字
+				典则被转化为 Lua 的用户数据 (userdata) (见
+				|lua-list| 和 |lua-dict|)。
+				示例: >
+					:lua tw = vim.eval"&tw"
+					:lua print(vim.eval"{'a': 'one'}".a)
+<
+	vim.line()		返回当前行 (不包含行尾的 <EOL>)，类型为 Lua 字
+				符串。
+
+	vim.beep()		鸣笛。
+
+	vim.open({fname})	为文件 {fname} 打开新缓冲区，返回该缓冲区。
+				注意 该缓冲区并不会被设为当前缓冲区。
+
+	vim.call({name} [, {args}])
+				代理名为 {name} 且带指定参数 {args} 的 Vim 函
+				数调用。例如: >
+					:lua print(vim.call('has', 'timers'))
+<
+	vim.fn			代理 Vim 函数调用。代理方法会按需建立。例如: >
+					:lua print(vim.fn.has('timers'))
+<
+	vim.lua_version		Vim 编译时使用的 Lua 版本，形如
+				{major}.{minor}.{patch}，如 "5.1.4"。
+
+	vim.version()		返回 Vim 版本信息，类型为 Lua 表。该表包含以下
+				键:
+					major - 主 Vim 版本号。
+					minor - 次 Vim 版本号。
+					patch - 包含的最新补丁号。
+
+                                                        *lua-vim-variables*
+Lua 可以按照惯例使用下述的 `vim.*` Lua 表，以访问 Vim 编辑器中的全局字典 |g:|
+|w:| |b:| |t:| |v:|。这样可以方便在 Lua 里读取和修改 Vim 全局脚本变量。
+
+示例: >
+
+    vim.g.foo = 5     -- 设置 g:foo Vim 脚本变量。
+    print(vim.g.foo)  -- 获取和显示 g:foo Vim 脚本变量。
+    vim.g.foo = nil   -- 删除 (:unlet) Vim 脚本变量。
+
+vim.g                                                   *vim.g*
+        全局 (|g:|) 编辑器变量集。
+        无对应值的键会返回 `nil`。
+
+vim.b                                                   *vim.b*
+        局部于当前缓冲区作用域 (|b:|) 的变量集。
+        非法或未设置的键会返回 `nil`。
+
+vim.w                                                   *vim.w*
+        局部于当前窗口作用域 (|w:|) 的变量集。
+        非法或未设置的键会返回 `nil`。
+
+vim.t                                                   *vim.t*
+        局部于当前标签页作用域 (|t:|) 的变量集。
+        非法或未设置的键会返回 `nil`。
+
+vim.v                                                   *vim.v*
+        |v:| 变量。
+        非法或未设置的键会返回 `nil`。
+
+==============================================================================
+3. 列表用户数据						*lua-list*
+
+列表用户数据对应 vim 列表，其接口尽量接近 Vim 的列表语法。因为列表属于对象，而
+Lua 和 Vim 会共享对象引用，Lua 中对列表引用的改动会在 Vim 中反映，反之亦然。列
+表 "l" 包含以下属性和方法:
+
+注意: 从 8.2.1066 补丁版本开始，数组索引从以零为底改为以一为底。为此可检查: >
+	    if has("patch-8.2.1066")
+
+属性
+----
+	o "#l" 返回 "l" 的列表长度，等价于 Vim 中的 "len(l)"。
+	o "l[k]" 返回 "l" 的第 k 项；"l" 索引从一开始，和 Lua 一致。
+	    要修改第 k 项，可用 "l[k] = newitem"；
+	    特别地，"l[k] = nil" 会删除 "l" 的第 k 项。
+	    要在列表最后追加项目，可用 "l[#l + 1] = newitem"
+	o "l()" 返回遍历 "l" 的迭代器。
+	o "table.insert(l, newitem)" 在列表尾部插入项目。
+	    (仅适用于 Lua 5.3 及以后版本)
+	o "table.insert(l, position, newitem)" 在指定位置插入项目。"position"
+	    索引从一开始。(仅适用于 Lua 5.3 及以后版本)
+	o "table.remove(l, position)" 在指定位置删除项目。"position" 索引从一
+	    开始。
+
+方法
+----
+	o "l:add(item)" 在 "l" 尾部追加 "item" 项目。
+	o "l:insert(item[, pos])" 在可选的 "pos" 指定的位置上插入 "item" 项
+	    目。"pos" 省略时默认为 "0"。
+
+示例:
+>
+	:let l = [1, 'item']
+	:lua l = vim.eval('l') -- 相同的 'l'
+	:lua l:add(vim.list())
+	:lua l[1] = math.pi
+	:echo l[0] " 3.141593
+	:lua l[1] = nil -- 删除第一项
+	:lua l:insert(true, 1)
+	:lua print(l, #l, l[1], l[2])
+	:lua l[#l + 1] = 'value'
+	:lua table.insert(l, 100)
+	:lua table.insert(l, 2, 200)
+	:lua table.remove(l, 1)
+	:lua for item in l() do print(item) end
+
+==============================================================================
+4. 字典用户数据						*lua-dict*
+
+和列表用户数据类似，字典用户数据对应 vim 的字典；既然字典也是对象，Lua 和 Vim
+会共享对象引用。字典 "d" 包含以下属性:
+
+属性
+----
+	o "#d" 返回 "d" 的字典长度，等价于 Vim 中的 "len(d)"。
+	o "d.key" 或 "d['key']" 返回 "d" 的 "key" 键对应的项目值。
+	    要修改其值，可用 "d.key = newvalue"；
+	    特别地，"d[k] = nil" 会删除 "d" 中的对应项目。
+	o "d()" 返回遍历 "d" 的迭代器，等价于 Vim 的 "items(d)"。
+
+示例:
+>
+	:let d = {'n':10}
+	:lua d = vim.eval('d') -- 相同的 'd'
+	:lua print(d, d.n, #d)
+	:let d.self = d
+	:lua for k, v in d() do print(d, k, v) end
+	:lua d.x = math.pi
+	:lua d.self = nil -- 删除项目
+	:echo d
+<
+
+==============================================================================
+5. blob 用户数据					*lua-blob*
+
+blob 用户数据对应 vim blob。blob "b" 包含以下属性:
+
+属性
+----
+	o "#b" 返回 "b" 的 blob 长度，等价于 Vim 中的 "len(b)"。
+	o "b[k]" 返回 "b" 的第 k 项；和 Vim 一致，"b" 的索引从零开始。负数 "k"
+	    则从末尾倒数，也和 Vim 一致，如 "b[-1]" 代表末项。要修改第 k 项，
+	    直接写 "b[k] = number"；"b[#b] = number" 可在尾部追加一个字节。
+
+方法
+----
+	o "b:add(bytes)" 在 "b" 的尾处追加多个字节 "bytes"。
+
+示例:
+>
+	:let b = 0z001122
+	:lua b = vim.eval('b') -- 相同的 'b'
+	:lua print(b, b[0], #b)
+	:lua b[1] = 32
+	:lua b[#b] = 0x33 -- 在尾处附加一个字节
+	:lua b:add("\x80\x81\xfe\xff")
+	:echo b
+<
+
+==============================================================================
+6. 函数引用用户数据					*lua-funcref*
+
+函数引用用户数据对应 Vim 函数引用。定义时带有 "dict" 属性的函数引用需通过将其
+赋给某字典的一个键值来使其 "self" 对应该字典 (见下例)。函数引用 "f" 包含以下属
+性:
+
+属性
+----------
+	o "#f" 是 "f" 引用的函数名
+	o "f(...)" 会调用 "f" 引用的函数 (带参数)
+
+示例:
+>
+	:function I(x)
+	:  return a:x
+	:  endfunction
+	:let R = function('I')
+	:lua i1 = vim.funcref('I')
+	:lua i2 = vim.eval('R')
+	:lua print(#i1, #i2) -- 都应返回 'I'
+	:lua print(i1, i2, #i2(i1) == #i1(i2))
+	:function Mylen() dict
+	:  return len(self.data)
+	:  endfunction
+	:let mydict = {'data': [0, 1, 2, 3]}
+	:lua d = vim.eval('mydict'); d.len = vim.funcref('Mylen')
+	:echo mydict.len()
+	:lua l = d.len -- 把 d 视为 'self'
+	:lua print(l())
+<
+Lua 函数和闭包会自动转换为 Vim 的 |Funcref|，以便在 Vim 脚本里访问。例如:
+>
+	lua <<EOF
+	vim.fn.timer_start(1000, function(timer)
+	    print('timer callback')
+	end)
+	EOF
+
+==============================================================================
+7. 缓冲区用户数据					*lua-buffer*
+
+缓冲区用户数据对应 vim 的缓冲区。缓冲区用户数据 "b" 包含以下属性和方法:
+
+属性
+----------
+	o "b()" 设置 "b" 为当前缓冲区。
+	o "#b" 是缓冲区 "b" 的行数。
+	o "b[k]" 代表行号 k: "b[k] = newline" 把第 "k" 行替换为字符串
+	    "newline"，还有 "b[k] = nil" 删除第 "k" 行。
+	o "b.name" 包含缓冲区 "b" 的简短名 (只读)。
+	o "b.fname" 包含缓冲区 "b" 的完整名 (只读)。
+	o "b.number" 包含缓冲区 "b" 在缓冲区列表的位置 (只读)。
+
+方法
+-------
+	o "b:insert(newline"[, pos]")" 在缓冲区 "pos" (可选) 位置插入
+	    "newline" 字符串。"pos" 缺省值为 "#b + 1"。如果 "pos == 0"，
+	    "newline" 将成为缓冲区的首行。
+	o "b:next()" 返回缓冲区列表中 "b" 的下一个缓冲区。
+	o "b:previous()" 返回缓冲区列表 "b" 的前一个缓冲区。
+	o "b:isvalid()" 如果缓冲区 "b" 对应 "真正的" (内存没有释放的) Vim 缓
+	    冲区时，返回 'true' (布尔值)。
+
+示例:
+>
+	:lua b = vim.buffer() -- 当前缓冲区
+	:lua print(b.name, b.number)
+	:lua b[1] = "first line"
+	:lua b:insert("FIRST!", 0)
+	:lua b[1] = nil -- 删除首行
+	:lua for i=1,3 do b:insert(math.random()) end
+	:3,4lua for i=vim.lastline,vim.firstline,-1 do b[i] = nil end
+	:lua vim.open"myfile"() -- 打开缓冲区，设为当前缓冲区
+
+	function! ListBuffers()
+	lua << EOF
+	local b = vim.buffer(true) -- 列表中的首个缓冲区
+	while b ~= nil do
+		print(b.number, b.name, #b)
+		b = b:next()
+	end
+	vim.beep()
+	EOF
+	endfunction
+<
+
+==============================================================================
+8. 窗口用户数据						*lua-window*
+
+窗口对象代表 vim 窗口。窗口用户数据 "w" 有以下属性和方法:
+
+属性
+----------
+	o "w()" 设置 "w" 为当前窗口。
+	o "w.buffer" 返回窗口 "w" 对应的缓冲区 (只读)。
+	o "w.line" 返回窗口 "w" 的光标行位置。
+	o "w.col" 返回窗口 "w" 的光标列位置。
+	o "w.width" 代表窗口 "w" 的宽度。
+	o "w.height" 代表窗口 "w" 的高度。
+
+方法
+-------
+	o "w:next()" 返回 "w" 的下一个窗口。
+	o "w:previous()" 返回 "w" 的前一个窗口。
+	o "w:isvalid()"  窗口 "w" 对应 "真正的" (内存没有释放的) Vim 窗口则返
+	    回 'true' (布尔值)。
+
+示例:
+>
+	:lua w = vim.window() -- 当前窗口
+	:lua print(w.buffer.name, w.line, w.col)
+	:lua w.width = w.width + math.random(10)
+	:lua w.height = 2 * math.random() * w.height
+	:lua n,w = 0,vim.window(true) while w~=nil do n,w = n + 1,w:next() end
+	:lua print("有 " .. n .. " 个窗口")
+<
+
+==============================================================================
+9. luaeval 函数					*lua-luaeval* *lua-eval*
+
+和 "vim.eval" 对应，在 Vim 中可用 "luaeval" 函数接受 Lua 值的传入。"luaeval"
+接受一个表达式字符串以及一个可选的参数，并返回表达式的计算结果。语义上，等价于
+在 Lua 里执行如下操作:
+>
+	local chunkheader = "local _A = select(1, ...) return "
+	function luaeval (expstr, arg)
+	    local chunk = assert(loadstring(chunkheader .. expstr, "luaeval"))
+	    return chunk(arg) -- return typval
+	end
+<
+注意 "_A" 用来接收传递给 "luaeval" 的参数。Lua 的数值，字符串，列表，字典、
+blob 和函数引用用户数据都会被转换为对应的 Vim 类型，而 Lua 布尔型则会被转换为
+数值。其他 Lua 类型，包括不属于列表、字典、blob、函数引用的用户数据都无法被转
+换，试图转换时会抛出错误。
+
+示例: >
+
+	:echo luaeval('math.pi')
+	:lua a = vim.list():add('newlist')
+	:let a = luaeval('a')
+	:echo a[0] " 'newlist'
+	:function Rand(x,y) " random uniform between x and y
+	:  return luaeval('(_A.y-_A.x)*math.random()+_A.x', {'x':a:x,'y':a:y})
+	:  endfunction
+	:echo Rand(1,10)
+
+
+==============================================================================
+10. 动态调入					    *lua-dynamic*
+
+MS-Windows 和 Unix 上，可动态调入 Lua 库。此时 |:version| 输出会包含
+|+lua/dyn|。
+
+此时，Vim 仅在必要时才会寻找 Lua DLL 或共享库文件。不使用 Lua 接口时，就不需要
+库文件。因此，即使没有这些 DLL 文件，仍然可以使用 Vim。
+
+
+MS-Windows ~
+
+要使用 Lua 接口，必须确保 Lua DLL 位于系统搜索路径中。可以在控制台窗口里输入
+"path"，查看当前使用的搜索路径。也可用 'luadll' 选项指定 Lua DLL 的位置。DLL
+的版本必须和 Vim 编译使用的 Lua 版本保持一致。
+
+
+Unix ~
+
+可用 'luadll' 选项指定 Lua 共享库文件的位置，替代编译时指定的 DYNAMIC_LUA_DLL
+文件。共享库的版本必须和 Vim 编译使用的 Lua 版本保持一致。
+
+
+==============================================================================
+ vim:tw=78:ts=8:noet:ft=help:norl:

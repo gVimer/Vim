@@ -1,0 +1,818 @@
+*tagsrch.txt*	适用于 Vim 9.2 版本。  最近更新: 2026年10月
+
+
+		  VIM 参考手册	by Bram Moolenaar
+				译者: Willis
+
+
+标签和特殊搜索						*tags-and-searches*
+
+基础用法请参考用户手册 |29.1| 一节。
+
+1. 跳转到标签			|tag-commands|
+2. 标签栈			|tag-stack|
+3. 标签匹配表			|tag-matchlist|
+4. 标签细节			|tag-details|
+5. 标签文件格式			|tags-file-format|
+6. 包含文件搜索			|include-search|
+7. 使用 'tagfunc'		|tag-function|
+
+==============================================================================
+1. 跳转到标签						*tag-commands*
+
+							*tag* *tags*
+标签是 "tags" 文件内的标识符，是一种可跳转定位的标记。例如，C 程序中函数名可用
+作标签。在使用标签命令前，需要 ctags 这类工具先生成 "tags" 文件。
+
+|:tag| 命令跳转到标签定义处。CTRL-] 命令则会将光标所在关键字用作标签进行跳转。
+光标不在任意关键字上时，则取光标右侧第一个关键字。
+
+|:tag| 命令对 C 程序十分有效。看到函数调用而想知道该函数的作用时，可将光标移动
+到函数名上按 CTRL-]。直接跳转到函数定义。要跳回，可简单地用 CTRL-T。另见下文标
+签栈。
+
+						*:ta* *:tag* *E426* *E429*
+:[count]ta[g][!] {name}
+			根据 tags 文件信息，跳转到 {name} 的定义。并将 {name}
+			压入标签栈。[!] 见 |tag-!|。
+			{name} 支持正则表达式。见 |tag-regexp|。
+			存在多个匹配项时，跳转到其中第 [count] 个匹配。[count]
+			省略时默认跳转到首个匹配项。要跳转到其他匹配项，可见
+			|tag-matchlist|。
+
+g<LeftMouse>						*g<LeftMouse>*
+<C-LeftMouse>					*<C-LeftMouse>* *CTRL-]*
+CTRL-]			跳转到光标所在或其后关键字的定义。相当于 {name} 为光标
+			所在或其后的关键字时执行 ":tag {name}"。
+			存在多个匹配项时，跳转到其中第 [count] 个匹配。[count]
+			省略时默认跳转到首个匹配项。要跳转到其他匹配项，可见
+			|tag-matchlist|。
+
+							*v_CTRL-]*
+{Visual}CTRL-]		相当于 {name} 为高亮选中文本时执行 ":tag {name}"。
+
+							*telnet-CTRL-]*
+CTRL-] 是 telnet 缺省转义键。在 telnet 会话中按 CTRL-] 不会触发标签跳转，而是
+弹出 telnet 命令提示符。绝大多数版本 telnet 可修改或屏蔽缺省转义键。见 telnet
+手册页。具体来说，可用 'telnet -E {Hostname}' 屏蔽转义键，或 'telnet -e
+{EscapeCharacter} {Hostname}' 指定其他转义键。如有可能，建议改用 "ssh"，也可解
+决此问题。
+
+							*tag-priority*
+标签存在多个匹配项时，使用以下优先级排序:
+1. "FSC"  当前文件内、大小写完全匹配、静态标签。
+2. "F C"  当前文件内、大小写完全匹配、全局标签。
+3. "F  "  其他文件内、大小写完全匹配、全局标签。
+4. "FS "  其他文件内、大小写完全匹配、静态标签。
+5. " SC"  当前文件内、忽略大小写匹配、静态标签。
+6. "  C"  当前文件内、忽略大小写匹配、全局标签。
+7. "   "  其他文件内、忽略大小写匹配、全局标签。
+8. " S "  其他文件内、忽略大小写匹配、静态标签。
+
+注意 切换当前文件时，优先级列表一般不会变更，以免 |:tnext| 命令行为出现混乱。
+执行 ":tag {name}" 时，才会重新计算优先级。
+
+以下情况下，|:tag| 命令跳过忽略大小写的匹配项:
+- 'tagcase' 为 "followic" 且 'ignorecase' 选项关闭
+- 'tagcase' 为 "followscs" 且 'ignorecase' 选项关闭、且 (译者注: 原文如此，应
+  为 "或") 'smartcase' 选项关闭、或两个选项都打开但模式包含大写字符
+- 'tagcase' 为 "match"
+- 'tagcase' 为 "smart" 且模式包含大写字符。
+
+以下情况下，命令会返回忽略大小写的匹配:
+- 使用正则模式 (以 "/" 开头)
+- 使用 |:tselect|
+- 'tagcase' 为 "followic" 且 'ignorecase' 打开
+- 'tagcase' 为 "followscs" 且 'ignorecase' 打开、或 (译者注: 原文如此，应为
+  "且") 'smartcase' 打开、且模式不包含大写字符
+- 'tagcase' 为 "ignore"
+- 'tagcase' 为 "smart" 且模式不包含大写字符
+
+注意 使用忽略大小写匹配时，tags 文件会禁用二分法查找，从而造成性能下降。解决方
+法是 tags 文件通过大小写合并排序。详见 'tagbsearch' 选项。
+
+==============================================================================
+2. 标签栈				*tag-stack* *tagstack* *E425*
+
+标签栈记住每一次标签跳转目标，以及跳转前的光标位置。仅当开启 'tagstack' 选项
+时，标签才会压入堆栈。
+
+g<RightMouse>						*g<RightMouse>*
+<C-RightMouse>					*<C-RightMouse>* *CTRL-T*
+CTRL-T			在标签栈上回退 [count] 个标签 (缺省为 1) (译者注: 回退
+			时会跳转到其跳转前的光标位置)。
+
+						*:po* *:pop* *E555* *E556*
+:[count]po[p][!]	在标签栈上回退 [count] 个标签 (缺省为 1)。
+			[!] 见 |tag-!|。
+
+:[count]ta[g][!]	在标签栈上前进 [count] 个标签 (缺省为 1)。
+			[!] 见 |tag-!| (译者注: 前进时会跳转到标签的定义位置，
+			与 |:pop| 命令并非完全对称)。
+
+							*:tags*
+:tags			显示标签栈内容。当前激活项目以 '>' 标记。
+
+|:tags| 的输出结果示例:
+
+   # 到 tag         从   行    在 文件/文本
+   1  1 main		    1  harddisk2:text/vim/test
+ > 2  2 FuncA		   58  i = FuncA(10);
+   3  1 FuncC	          357  harddisk2:text/vim/src/amiga.c
+
+列表展示跳转目标标签、以及跳转前的光标位置。旧条目在上方，新条目在下方。
+
+'>' 指向当前激活项目。即下次 `:tag` 命令跳转到的标签。CTRL-T 和 |:pop| 则跳回
+到激活项目上方的记录。
+
+"到" 列下方数值显示每个标签的匹配表中当前匹配序号。注意 使用 |:pop| 或 `:tag`
+命令不会改变此序号。
+
+行号与文件名会被保存，用于返回标签跳转命令前的位置。即使出现行增删，行号也会保
+持有效，但文件如果被外部程序 (如另一 Vim 实例) 修改，则未必如此。
+
+对于当前文件，"文件/文本" 列会显示跳转位置处文本。缩进会被移除、长行也被截断，
+以适配窗口宽度。
+
+提供多个命令跳回历史标签。示例如下:
+
+	|:pop| 或 CTRL-T	跳回上一个标签跳转前的位置
+	{count}CTRL-T		回退 {count} 个标签跳转前的位置
+	`:tag`			前进到下一个标签
+	`:0tag`			跳转到最近使用的标签
+
+最典型的应用场景是浏览程序调用图。考虑以下调用图:
+
+	main  --->  FuncA  --->  FuncC
+	      --->  FuncB
+
+(说明: main 调用 FuncA 和 FuncB; FuncA 调用 FuncC)。
+在 main 内，可在 FuncA 调用处按 CTRL-] 跳到 FuncA。再按 CTRL-] 跳到 FuncC。要
+跳回到 main，按 CTRL-T 两次。之后按 CTRL-] 跳到 FuncB。
+
+执行 ":ta {name}" 或 CTRL-] 命令时，新标签会被插入栈当前位置。如果栈已满 (最多
+可容纳 20 项)，最早项目被丢弃，其余旧项目整体上移 (序号分别减 1)。当前激活项目
+不在栈底时，其下方所有项目都被删除。相当于在调用图中旧分支被丢弃。因此，在以上
+示例操作完成后，标签栈应为:
+
+   # 到 tag         从   行    在 文件/文本
+   1  1 main		    1  harddisk2:text/vim/test
+   2  1 FuncB	           59  harddisk2:text/vim/src/main.c
+
+|gettagstack()| 函数获取指定窗口的标签栈。而 |settagstack()| 函数修改指定窗口
+的标签栈。
+
+							*tagstack-examples*
+类似 `:tag`，写入标签栈，但通过自定义 `jumper#jump_to_tag` 函数实现跳转: >vim
+	" 跳转前先保存当前位置。
+	let tag = expand('<cword>')
+	let pos = [bufnr()] + getcurpos()[1:]
+	let item = {'bufnr': pos[0], 'from': pos, 'tagname': tag}
+	if jumper#jump_to_tag(tag)
+		" 跳转成功，将跳转前的位置写入标签栈。
+		let winid = win_getid()
+		let stack = gettagstack(winid)
+		let stack['items'] = [item]
+		call settagstack(winid, stack, 't')
+	endif
+<
+设置标签栈当前索引为 4: >
+	call settagstack(1005, {'curidx' : 4})
+<
+向标签栈压入新项目: >
+	let pos = [bufnr('myfile.txt'), 10, 1, 0]
+	let newtag = [{'tagname' : 'mytag', 'from' : pos}]
+	call settagstack(2, {'items' : newtag}, 'a')
+<
+							*E73*
+如果对空标签栈执行操作，会报错。
+
+==============================================================================
+3. 标签匹配表				*tag-matchlist* *E427* *E428*
+
+标签存在多个匹配时，可用以下命令在匹配项间跳转。注意 这些命令不会修改标签栈，
+栈条目保持不变。
+
+							*:ts* *:tselect*
+:ts[elect][!] [name]	根据 tags 文件信息，列出匹配 [name] 的所有标签。
+			[name] 省略时，默认使用标签栈中最近使用的标签名。
+			[!] 见 |tag-!|。
+			首列 '>' 标记列表中的当前位置 (如有)。
+			[name] 支持正则表达式，见 |tag-regexp|。
+			列表使用的优先级顺序见 |tag-priority|。
+			示例输出:
+
+>
+	  # pri kind tag		文件
+	  1 F	f    mch_delay		os_amiga.c
+			mch_delay(msec, ignoreinput)
+	> 2 F	f    mch_delay		os_msdos.c
+			mch_delay(msec, ignoreinput)
+	  3 F	f    mch_delay		os_unix.c
+			mch_delay(msec, ignoreinput)
+	输入数字并回车（q 或空取消）：
+<
+			"pri" 优先列见 |tag-priority|。注意 结果受当前文件影
+			响，`:tselect xxx` 在不同文件中输出结果可能不同。
+			"kind" 列显示 tags 文件提供的标签类型 (如有)。
+			"info" 列显示 tags 文件能找到的附加信息。具体取决于生
+			成 tags 文件的工具。
+			列表很长时，可能会触发 |more-prompt|。已看到所需标签
+			时，直接按对应序号回车，或按 'q' 退出。
+
+							*:sts* *:stselect*
+:sts[elect][!] [name]	执行 ":tselect[!] [name]"，并分割窗口显示选中标签。
+
+							*g]*
+g]			类似 CTRL-]，但调用 |:tselect| 而非 |:tag|。
+
+							*v_g]*
+{Visual}g]		类似 |g]|，但使用高亮选中文本作为标识符。
+
+							*:tj* *:tjump*
+:tj[ump][!] [name]	类似 |:tselect|，但仅一条匹配时直接跳转，不弹出列表。
+
+							*:stj* *:stjump*
+:stj[ump][!] [name]	执行 ":tjump[!] [name]"，并分割窗口显示选中标签。
+
+							*g_CTRL-]*
+g CTRL-]		类似 CTRL-]，但调用 |:tjump| 而非 |:tag|。
+
+							*v_g_CTRL-]*
+{Visual}g CTRL-]	类似 "g CTRL-]"，但使用高亮选中文本作为标识符。
+
+							*:tn* *:tnext*
+:[count]tn[ext][!]	正向跳转 [count] 个匹配标签 (缺省为 1)。[!] 见
+			|tag-!|。
+
+							*:tp* *:tprevious*
+:[count]tp[revious][!]	反向跳转 [count] 个匹配标签 (缺省为 1)。[!] 见
+			|tag-!|。
+
+							*:tN* *:tNext*
+:[count]tN[ext][!]	同 |:tprevious|。
+
+							*:tr* *:trewind*
+:[count]tr[ewind][!]	跳转到首个匹配标签。[count] 给出时，跳到第 [count] 个
+			匹配标签。[!] 见 |tag-!|。
+
+							*:tf* *:tfirst*
+:[count]tf[irst][!]	同 ":trewind"。
+
+							*:tl* *:tlast*
+:tl[ast][!]		跳转到最后一个匹配标签。[!] 见 |tag-!|。
+
+							*:lt* *:ltag*
+:lt[ag][!] [name]	跳转到标签 [name]，并将所有匹配标签加入当前窗口的新建
+			位置列表。[name] 支持正则表达式，见 |tag-regexp|。
+			[name] 省略时，默认使用标签栈中最近使用的标签名。定位
+			标签行的搜索模式会加上 "\V" 前缀，转义所有特殊字符 (超
+			非魔术模式)。显示匹配标签的位置列表独立于标签栈。
+			[!] 见 |tag-!|。
+
+无其他消息时，Vim 会显示当前跳转到的匹配项序号和总匹配数: >
+	找到 tag: 1 / 3 或更多
+" 或更多" 表示 Vim 尚未检索完全部 tags 文件。多次执行 |:tnext| 或 |:tlast| 可
+能发现更多匹配。
+
+如果该消息被其他消息覆盖，或在未改变位置时要查看当前匹配位置，可用以下命令再次
+显示本消息 (停留在最近的匹配位置不变): >
+	:0tn
+<
+							*tag-skip-file*
+匹配标签对应的文件如果不复存在，跳过该项并选取下一项匹配。Vim 会提示文件缺失。
+遍历完匹配列表后，则会报错。
+
+							*tag-preview*
+也可在预览窗口中使用标签匹配表。命令名同上，但加前缀 "p"。
+{仅当编译时加入 |+quickfix| 特性才有效}
+
+							*:pts* *:ptselect*
+:pts[elect][!] [name]	执行 ":tselect[!] [name]"，并在预览窗口显示选中标签。
+			详见 |:ptag|。
+
+							*:ptj* *:ptjump*
+:ptj[ump][!] [name]	执行 ":tjump[!] [name]"，并在预览窗口显示选中标签。
+			详见 |:ptag|。
+
+							*:ptn* *:ptnext*
+:[count]ptn[ext][!]	预览窗口版 |:tnext|。见 |:ptag|。
+
+							*:ptp* *:ptprevious*
+:[count]ptp[revious][!]	预览窗口版 |:tprevious|。见 |:ptag|。
+
+							*:ptN* *:ptNext*
+:[count]ptN[ext][!]	同 |:ptprevious|。
+
+							*:ptr* *:ptrewind*
+:[count]ptr[ewind][!]	预览窗口版 |:trewind|。见 |:ptag|。
+
+							*:ptf* *:ptfirst*
+:[count]ptf[irst][!]	同 |:ptrewind|。
+
+							*:ptl* *:ptlast*
+:ptl[ast][!]		预览窗口版 |:tlast|。见 |:ptag|。
+
+==============================================================================
+4. 标签细节						*tag-details*
+
+							*static-tag*
+静态标签是限定于特定文件内定义的标签。C 程序中的静态函数就是一例。
+
+Vi 里，标签跳转操作会设置当前搜索模式。这意味着跳转标签后，|n| 命令不再沿用跳
+转前的搜索模式。Vim 将此视为缺陷，因此不再采用此行为。要恢复 Vi 旧行为，可在
+'cpoptions' 里包含 't' 标志位 |cpo-t|。
+
+							*tag-binary-search*
+Vim 使用二分法查找标签文件，快速定位标签 {仅当编译时打开 |+tag_binary| 特性才
+有效}。但前提是 tags 文件已按 ASCII 字节值排序。因此，如果找不到任何匹配，Vim
+会通过线性查找再尝试一次。要只使用线性查找，可复位 'tagbsearch' 选项。但更好的
+建议是: 先对 tags 文件排序！
+
+注意 标签查找目标不是固定名时，不使用二分法查找。例如忽略大小写、或使用不以固
+定字符串开头的正则表达式时。此时标签搜索速度可能会明显减慢。前者可用大小写合并
+排序解决。详见 'tagbsearch'。
+
+							*tag-regexp*
+|:tag| 和 |:tselect| 命令支持正则表达式参数。模式可用的特殊字符见 |pattern|。
+参数以 '/' 开头时，作为模式处理。否则作为按本义出现的完整标签名处理。
+示例: >
+    :tag main
+<	跳转到优先级最高名为 "main" 的标签。 >
+    :tag /^get
+<	跳转到优先级最高的以 "get" 开头的标签。 >
+    :tag /norm
+<	列出所有包含 "norm" 的标签，例如 "id_norm"。
+参数既能按本义匹配，也能按模式匹配时，本义匹配优先级更高。例如 `:tag /open` 优
+先匹配 "open"，其次才是 "open_file" 和 "file_open"。
+使用模式匹配时，缺省忽略大小写。如需匹配大小写，在模式内使用 |\C|。
+
+							*tag-!*
+标签位于当前文件时，命令总能成功。否则，最终行为取决于当前文件是否有修改、命令
+后是否给出 [!]、以及 'autowrite' 和 'winfixbuf' 选项值:
+
+标签是否位    文件是否	    winfixbuf  autowrite			~
+于当前文件     已修改	!     选项	 选项		行为	~
+-----------------------------------------------------------------------------
+    是		 x	x      关	  x	    跳转标签
+    否		 否	x      关	  x	    读取目标文件，跳转标签
+    否		 是	是     关	  x	    放弃当前文件，读取目标文
+						    件，跳转标签
+    否		 是	否     关	  开	    保存当前文件，读取目标文
+						    件，跳转标签
+    否		 是	否     关	  关	    失败
+    是		 x	是     x	  x	    跳转标签
+    否		 否	否     开	  x	    失败
+    否		 是	否     开	  x	    失败
+    否		 是	否     开	  开	    失败
+    否		 是	否     开	  关	    失败
+-----------------------------------------------------------------------------
+
+完整处理步骤是
+- 标签位于当前文件时，命令一定成功。
+- 标签位于其他文件但窗口启用 'winfixbuf'，则命令失败。标签位于同一文件时仍可正
+  常执行。
+- 标签位于其他文件而当前文件未修改时。目标文件会成为当前文件并读入缓冲区。
+- 标签位于其他文件而当前文件已修改时，
+  - 命令后给出 [!] 则当前文件放弃修改，目标文件成为当前文件并读入缓冲区。
+  - 'autowrite' 选项开启则先保存当前文件，目标文件再成为当前文件并读入缓冲区。
+  - 'autowrite' 选项关闭则命令失败。此时如需保存修改，可先用 |:w| 命令，再调用
+    不带参数的 `:tag` (因为该标签已在栈上) 即可。而如需放弃修改，可用 `:tag!`
+    命令。
+
+							*tag-security*
+注意 出于安全考虑，Vim 在搜索标签时禁用部分命令。和控制当前目录下 exrc/vimrc
+文件执行的 'secure' 选项机制一致。见 |trojan-horse| 和 |sandbox|。
+如果 {tagaddress} 试图修改缓冲区，会弹出警告 (译者注: 可能已过时，因为不见于源
+代码):
+	"WARNING: tag command changed a buffer!!!"
+出于安全考虑，未来版本将彻底禁止修改缓冲区: 因为他人可在 tags 文件内嵌入恶意命
+令而不易被察觉。例如: >
+	:$d|/tag-function-name/
+
+Vi 在 |:tag| 命令搜索标签时会设置最近搜索模式。Vim 不采用此行为，原有搜索模式
+保留。仅当 'cpoptions' 包含 't' 标志位时 |cpo-t| 才启用 Vi 旧行为。
+
+					*emacs-tags* *emacs_tags* *E430*
+{仅当 Vim 编译时加入 |+emacs_tags| 特性时才支持 Emacs 风格的 TAGS 文件}。对不
+起，此处不介绍 Emacs 标签文件格式，此支持只是为了后向兼容。:-)。
+
+Emacs tags 文件行可能很长。Vim 不处理超长行 (超过约 510 字节)。要查看哪些行被
+忽略，可将 'verbose' 设为 5 或更高。非 Emacs 格式的 tags 文件行无长度限制。
+
+							*tags-option*
+'tags' 选项为文件名列表。每个文件依次用于搜索标签。可用于替换缺省 "tags" 标签
+文件，也可用于访问公共标签文件。
+
+找到一个标签后，满足以下情况之一则不再检索列表中的后续文件:
+- 在当前缓冲区找到静态标签匹配项。
+- 找到全局标签匹配项。
+同时取决于是否忽略大小写。忽略大小写的条件是:
+- 'tagcase' 为 "followic" 且置位 'ignorecase'
+- 'tagcase' 为 "ignore"
+- 'tagcase' 为 "smart" 且模式仅包含小写字符
+- 'tagcase' 为 "followscs" 且置位 'smartcase' 且模式仅包含小写字符 (译者注: 同
+  时必须置位 'ignorecase')
+不忽略大小写且当前标签文件存在大小写不合的匹配项时，则继续在下个标签文件内寻找
+大小写匹配标签。找不到任何大小写匹配的标签时，才使用首个大小写不合的匹配项。
+忽略大小写且找到全局匹配项 (无论大小写是否一致) 时，直接使用，不再检索后续文
+件。
+
+以 "./" 开头的标签文件名会将 '.' 替换为当前文件所在路径。借此可直接使用当前文
+件所在目录下的标签文件 (不受工作目录影响)。使用 "./" 可控制标签文件查找顺序，
+工作目录优先可用 "tags,./tags"，当前文件所在目录优先则可用 "./tags,tags"。
+
+例如: >
+	:set tags=./tags,tags,/home/user/commontags
+
+此命名中，标签文件搜索顺序为，当前文件所在目录下的 "tags" 文件、工作目录下的
+"tags" 文件、最后是 "/home/user/commontags"。
+
+'cpoptions' 里包含 'd' 标志位时 |cpo-d| 恢复 Vi 兼容行为。此时 "./tags" 代表工
+作目录下的 tags 文件，而非当前文件所在目录。
+
+可用空格代替逗号作为列表分隔符。在本字符串选项中，空格需要用反斜杠转义: >
+	:set tags=tags\ /home/user/commontags
+
+而文件名内嵌空格则需要三个反斜杠转义。文件名内嵌逗号需要两个反斜杠。示例: >
+	:set tags=tag\\\ file,/home/user/common\\,tags
+
+对应文件是 "tag file" 以及 "/home/user/common,tags"。'tags' 选项内部保存的值为
+"tag\ file,/home/user/common\,tags"。
+
+开启 'tagrelative' 选项 (这是缺省) 而使用其他目录下的标签文件时，标签文件内引
+用的相对文件名是相对于标签文件所在目录，而非工作目录。
+
+==============================================================================
+5. 标签文件格式					*tags-file-format* *E431*
+
+						*ctags*
+标签文件可由外部程序 (如 "ctags") 创建。会为每个函数生成一个标签。部分版本的
+"ctags" 还会为每个 "#define" 宏、类型等价定义 (typedef)、枚举 (enum) 等生成标
+签。
+
+可生成标签文件的工具有:
+ctags			多数 Unix 系统自带。仅支持 C 语言。只有基本功能。
+universal ctags		基于 exuberant ctags 的 ctags 维护版本。参见
+			https://ctags.io。
+							*Exuberant_ctags*
+exuberant ctags		功能完善。支持 C、C++、Java、Fortran、Eiffel 等语言。
+			可为大量语言元素生成标签。参见
+			http://ctags.sourceforge.net。
+			自 2009 年后不再发布新版本。
+etags			配套 Emacs。支持众多语言。
+|:helptags|		用于 Vim 的 |help| 帮助文档
+ptags.py		用于 Python，以 Python 编写。可在 Python 源代码目录
+			中获取: Tools/scripts/ptags.py。
+ptags			用于 Perl，以 Perl 编写。地址为
+			https://metacpan.org/pod/Vim::Tag
+gnatxref		用于 Ada。参见 http://www.gnuada.org/ 。属于 gnat 软件
+			包的一部分。
+
+
+标签文件行使用以下两种格式之一:
+
+1.  {tagname}		{TAB} {tagfile} {TAB} {tagaddress}
+2.  {tagname}		{TAB} {tagfile} {TAB} {tagaddress} {term} {field} ..
+
+旧版本曾支持另一种旧格式。见 |tag-old-static|。
+
+第一种格式为标准标签，和 Vi 完全兼容。传统 ctags 实现仅生成该格式。常用于可跨
+文件引用的全局函数。
+
+标签文件行尾可用 <NL> 或 <CR><NL>。Macintosh 下也支持 <CR>。<CR> 和 <NL> 字符
+不能出现在单行内部。
+
+第二种是新增格式。在行尾附加可选字段，提供额外信息。此格式和 Vi 后向兼容。仅新
+版 ctags (如 Universal ctags 或 Exuberant ctags) 支持。
+
+{tagname}	标识符。一般是函数名，但可为任意标识符。不能包含 <Tab>。
+{TAB}		单个 <Tab> 字符。注意: 旧版本允许任意多个空白字符。现已不再允
+		许，目的是为了支持 {tagfile} 内嵌空格。
+{tagfile}	{tagname} 定义所在文件。可为绝对路径或相对路径。也可包含环境变
+		量和通配符 (但使用通配符的意义不大)。不能包含 <Tab>。
+								*E1576*
+		除非 'tagsecure' 复位，否则禁止通过网络协议使用远程文件
+		(如 http://remote/file.txt)。
+{tagaddress}	用于将光标定位到标签的 Ex 命令。可为任意 Ex 命令，但存在安全限
+		制 (见 |tag-security|)。Posix 标准仅允许行号和搜索命令，这些也
+		是最常用的形式。
+{term}		;"，即分号加双引号。Vi 将其视为注释起始，忽略其后所有内容。因
+		此可用于与 Vi 后向兼容，使 Vi 忽略后续字段。示例: >
+			APP	file	/^static int APP;$/;"	v
+<		{tagaddress} 不是行号或搜索模式时，{term} 必须改为 |;"。其中竖
+		线终止前面命令 (不包含竖线本身)，而 ;" 如前所述，使 Vi 忽略本
+		行剩余部分。示例: >
+			APP	file.c	call cursor(3, 4)|;"	v
+
+{field} ..	可选字段列表。每个字段格式为:
+
+			<Tab>{fieldname}:{value}
+
+		{fieldname} 为标识字段名，只能包含字母 [a-zA-Z]。
+		{value} 可为任意字符串，但不能包含 <Tab>。
+		以下字符序列有特殊含义:
+			"\t" 代表 <Tab>
+			"\r" 代表 <CR>
+			"\n" 代表 <NL>
+			"\\" 代表单个 '\' 字符
+
+		有一个特殊字段，不带 ':'。对应标签类型。等价于字段有隐含前缀
+		"kind:"。上例中的 "v" 等价于 "kind:v" (一般代表变量类型)。
+		可通过 `ctags --list-kinds` 查看 ctags 支持的类型，详见其参考
+		文档。
+
+		Vim 目前仅额外识别另一个字段，"file:" (值为空)。用于标记静态变
+		量。
+
+标签文件的文件头部可放置使用以下标识开头的元信息行:
+	!_TAG_
+排序后，这类行一般都会排到最顶部。极少数以 "!" 开头的标签才会排在它们前面。Vim
+识别以下两类元信息。第一类指示文件是否已排序。检测到以下行时，Vim 会对此文件使
+用二分法查找:
+	!_TAG_FILE_SORTED<Tab>1<Tab>{任意内容} ~
+
+标签文件也可按大小写合并排序，用于忽略大小写 ('ignorecase' 置位且 'tagcase' 为
+"followic" 或 'tagcase' 为 "ignore") 时避免线性查找。详见 'tagbsearch'。此时应
+取值 2，如下:
+	!_TAG_FILE_SORTED<Tab>2<Tab>{任意内容} ~
+
+Vim 识别的另一类元消息标签指定标签文件编码:
+	!_TAG_FILE_ENCODING<Tab>utf-8<Tab>{任意内容} ~
+此例声明标签使用 "utf-8" 编码。Vim 会将待查找标签从 'encoding' 转为标签文件编
+码。而列出标签时反向转换。如果转换失败，则使用原始未转换标签。
+
+							*tag-search*
+标签搜索命令可为任意 Ex 命令，但最常用的是搜索命令。示例:
+	tag1	file1	/^main(argc, argv)/ ~
+	tag2	file2	108 ~
+
+搜索命令执行时总假定 'magic' 复位。搜索模式中仅 "^" (行首) 和 "$" (<EOL>) 有特
+殊意义。见 |pattern|。注意，为后向兼容 Vi，搜索文本里每个反斜杠前必须加上反斜
+杠转义。
+
+							*E434* *E435*
+命令为标准搜索命令 (以 "/" 或 "?" 前后包围) 时，会进行以下特殊处理:
+- 搜索从文件第 1 行开始。
+  使用 "/" 时搜索方向为正向，"?" 则为反向。
+  注意 不受 'wrapscan' 影响，始终完整搜索整个文件。
+- 如果搜索失败，忽略大小写再重新尝试一次。如果仍然失败，会尝试搜索以下模式: >
+	"^标签名[ \t]*("
+<  (即标签名前加上 '^'，其后附加 "[ \t]*(")。用于函数名时，会匹配出现在第 0 列
+  的函数名。这会有助于 tags 文件生成后函数参数发生变更时，仍能找到函数。如果仍
+  然失败行，继续尝试搜索以下模式: >
+	"^[#a-zA-Z_].*\<标签名[ \t]*("
+<  即: 以一行以 '#' 或标识符字符开头，行内包含标签名后跟任意空白再加 '('。这有
+  助于匹配宏定义、以及带返回类型前缀的函数名。
+
+							*tag-old-static*
+在 2019 年 3 月 (8.1.1092 补丁) 之前，Vim 曾经支持过一种过时格式:
+    {tagfile}:{tagname} {TAB} {tagfile} {TAB} {tagaddress}
+
+该格式仅用于静态标签。现已废弃，可由第二种格式替代。只有 Elvis 1.x，旧版 Vim
+还有少数 ctags 版本支持。静态标签一般用于本地函数，仅在 {tagfile} 文件内部引
+用。注意 对静态标签，两处 {tagfile} 必须完全相同。静态标签的用法另见
+|tags-option|。
+
+Vim 移除了此支持，因为升级 Vim 版本的同时，也应当可以升级 ctags，使用支持第二
+种扩展格式的版本。
+
+==============================================================================
+6. 包含文件搜索				*include-search* *definition-search*
+							*E387* *E388* *E389*
+
+以下命令在当前文件和所有被包含的文件中递归查找字符串。可用于查找变量、函数或宏
+的定义。如果仅需在当前缓冲区搜索，可用 |pattern-searches| 所列命令。
+
+{仅当编译时加入 |+find_in_path| 特性才有效}
+
+遇到包含其他文件的行时，会先搜索该文件、再继续处理当前缓冲区。被包含文件会以同
+样方式递归处理更内层的包含文件。执不到的包含文件会被静默忽略。要查看哪些包含文
+件未被找到，可用 |:checkpath| 命令，其中一个可能原因是 'path' 选项未正确设置。
+注意: 搜索的是磁盘上的包含文件，而非正在编辑该文件的缓冲区。当前文件除外，此时
+使用缓冲区文本。
+
+搜索目标字符串可为任意关键字或已定义宏。关键字会找到任意匹配项。已定义宏则仅匹
+配 'define' 选项指定的模式。其缺省值是 "^#\s*define"。适配 C 程序，其他语言通
+常需要修改。'define' 提供 C++ 示例。搜索字符串不能包含换行符，仅在单行内匹配。
+
+匹配到宏定义行时，如果该行以反斜杠结尾，显示内容会继续包含下一行。
+
+以 "[" 开头的命令代表从当前文件开头开始搜索。而以 "]" 开头的命令则代表从当前光
+标位置开始。
+
+'include' 选项用于识别引入其他文件的行。缺省为 "\^#\s*include"。适配 C 程序。
+注意: Vim 并不理解 C 语法。如果 'include' 模式在 #ifdef/#endif 间或注释行上匹
+配，仍会搜索其包含的文件。匹配过程需用到 'isfname' 选项，提取匹配后的文件名。
+
+'path' 选项用于解析不带绝对路径的包含文件的所在目录。
+
+显示或跳转到单行的命令会用到 'comments' 选项。它定义注释起始模式，匹配的注释行
+会在搜索过程中被忽略，除非使用 [!]。有一个特例: 匹配模式 "^# *define"的宏定义
+行不会被视作注释。
+
+要列出所有匹配项，再选择一项跳转，可用映射实现。示例实现如下 (译者注: "[\t" 对
+应 |[_CTRL-I| 命令): >
+
+  :map <F4> [I:let nr = input("Which one: ")<Bar>exe "normal " .. nr .. "[\t"<CR>
+<
+							*[i*
+[i			显示包含光标所在关键字的首个匹配行。搜索从文件开头开
+			始。忽略注释行 (见 'comments' 选项)。给出计数时，显示
+			第 [count] 个匹配行，且不再忽略注释行。
+
+							*]i*
+]i			类似 "[i"，但搜索从当前光标位置开始。
+
+							*:is* *:isearch*
+:[range]is[earch][!] [count] [/]pattern[/]
+			类似 "[i" 和 "]i"，但在 [range] 指定范围内搜索 (缺省:
+			整个文件)。
+			关于 [/] 和 [!] 见 |:search-args|。
+
+							*[I*
+[I			显示包含光标所在关键字的全部匹配行。附带文件名和行号。
+			搜索从文件开头开始。
+
+							*]I*
+]I			类似 "[I"，但搜索从当前光标位置开始。
+
+							*:il* *:ilist*
+:[range]il[ist][!] [/]pattern[/]
+			类似 "[I" 和 "]I"，但在 [range] 指定范围内搜索 (缺省:
+			整个文件)。
+			关于 [/] 和 [!] 见 |:search-args|。
+
+							*[_CTRL-I*
+[ CTRL-I		跳转到包含光标所在关键字的首个匹配行。搜索从文件开头开
+			始。忽略注释行 (见 'comments' 选项)。给出计数时，跳转
+			到第 [count] 个匹配行，且不再忽略注释行。
+
+							*]_CTRL-I*
+] CTRL-I		类似 "[ CTRL-I"，但搜索从当前光标位置开始。
+
+							*:ij* *:ijump*
+:[range]ij[ump][!] [count] [/]pattern[/]
+			类似 "[ CTRL-I" 和 "] CTRL-I"，但在 [range] 指定范围内
+			搜索 (缺省: 整个文件)。
+			关于 [/] 和 [!] 见 |:search-args|。
+
+CTRL-W CTRL-I					*CTRL-W_CTRL-I* *CTRL-W_i*
+CTRL-W i		新开窗口，并将光标定位到包含光标所在关键字的首个匹配
+			行。搜索从文件开头开始。忽略注释行 (见 'comments' 选
+			项)。给出计数时，跳转到第 [count] 个匹配行，且不再忽略
+			注释行。
+
+							*:isp* *:isplit*
+:[range]isp[lit][!] [count] [/]pattern[/]
+			类似 "CTRL-W i" 和 "CTRL-W i"，但在 [range] 指定范围内
+			搜索 (缺省: 整个文件)。
+			关于 [/] 和 [!] 见 |:search-args|。
+
+							*[d*
+[d			显示光标所在关键字的首条宏定义 (见 'define')。搜索从文
+			件开头开始。给出计数时，跳转到第 [count] 个匹配的宏定
+			义行。
+
+							*]d*
+]d			类似 "[d"，但搜索从当前光标位置开始。
+
+							*:ds* *:dsearch*
+:[range]ds[earch][!] [count] [/]string[/]
+			类似 "[d" 和 "]d"，但在 [range] 指定范围内搜索 (缺省:
+			整个文件)。
+			关于 [/] 和 [!] 见 |:search-args|。
+
+							*[D*
+[D			显示光标所在关键字的全部宏定义。附带文件名和行号。搜索
+			从文件开头开始。
+
+							*]D*
+]D			类似 "[D"，但搜索从当前光标位置开始。
+
+							*:dli* *:dlist*
+:[range]dli[st][!] [/]string[/]
+			类似 `[D` 和 `]D`，但在 [range] 指定范围内搜索 (缺省:
+			整个文件)。
+			关于 [/] 和 [!] 见 |:search-args|。
+			注意 在老式脚本里，`:dl` 功能等同带 "l" 标志位的
+			`:delete`，而非本命令的简写。而 |Vim9| 脚本里正相反，
+			`:dl` 是 `:dlist` 的简写。
+
+
+							*[_CTRL-D*
+[ CTRL-D		跳转到光标所在关键字的首条宏定义。搜索从文件开头开始。
+			给出计数时，跳转到第 [count] 个匹配的宏定义行。
+
+							*]_CTRL-D*
+] CTRL-D		类似 "[ CTRL-D"，但搜索从当前光标开始。
+
+							*:dj* *:djump*
+:[range]dj[ump][!] [count] [/]string[/]
+			类似 "[ CTRL-D" 和 "] CTRL-D"，但在 [range] 指定范围
+			内搜索 (缺省: 整个文件)。
+			关于 [/] 和 [!] 见 |:search-args|。
+
+
+CTRL-W CTRL-D					*CTRL-W_CTRL-D* *CTRL-W_d*
+CTRL-W d		新开窗口，并将光标定位到光标所在关键字的首条宏定义。搜
+			索从文件开头开始。给出计数时，跳转到第 [count] 个匹配
+			的宏定义行。
+
+							*:dsp* *:dsplit*
+:[range]dsp[lit][!] [count] [/]string[/]
+			类似 "CTRL-W d"，但在 [range] 指定范围内搜索 (缺省: 整
+			个文件)。
+			关于 [/] 和 [!] 见 |:search-args|
+
+					*:che* *:chec* *:check* *:checkpath*
+:che[ckpath]		列出所有找不到的包含文件。
+
+:che[ckpath]!		列出全部包含文件。
+
+								*:search-args*
+上述命令通用参数:
+[!]	给出时，识别为注释的行中仍然查找匹配。省略时，匹配过程跳过注释行 (根据
+	'comments') 或 C 注释 ("//" 之后或 /* */ 之间) 内部。注意 如果某行被识
+	别为注释，但注释实际该在行中间结束，可能会漏掉匹配项。而如果某行实际为
+	注释，但未被正确识别 (根据 'comments')，仍可能从中找到匹配项。示例: >
+		/* comment
+		   foobar */
+<	会匹配到 "foobar"，因为该行未被识别为注释 (尽管语法高亮可将其正确识别
+	为注释)。
+	注意: 因为宏定义通常不会被识别为注释，[!] 对 |:dlist|、|:dsearch| 和
+	|:djump| 无影响。
+[/]	模式可用 '/' 包围。不带 '/' 时，按完整单词匹配，等价于 "\<pattern\>"
+	模式。仅在第二个 '/' 之后，才可用 '|' 追加后续命令。示例: >
+	:isearch /string/ | echo "the last one"
+<	对 |:djump|、|:dsplit|、|:dlist| 和 |:dsearch| 命令，搜索参数为按本义
+	出现的字符串，不是正则模式。
+
+==============================================================================
+7. 使用 'tagfunc'						*tag-function*
+
+可以给 Vim 提供函数，动态生成标签列表，用于 |:tag|、|:tselect| 等命令、
+|CTRL-]| 等普通模式标签命令以及 |taglist()| 函数。
+
+设置 'tagfunc' 选项可用于指定生成标签列表的函数。此函数调用时接受三个参数:
+   pattern	标签搜索时使用的标签标识符或模式。
+   flags	控制函数行为的标志位字符串，见下。
+   info		字典，包含以下条目:
+		    buf_ffname	  完整文件名，用于优先级判断。
+		    user_data	  自定义数据字符串。可由 tagfunc 预先存入标签
+				  栈。
+
+注意 老式函数中，访问参数名需要加上 "a:" 前缀。
+
+目前，可为标签函数传入最多三个标志位:
+  'c'		函数由正在处理中的普通命令触发 (助记: 标签函数可用光标附近上下
+		文 (context) 生成更合适的标签列表)。
+  'i'		用户正在插入模式下补全标签 (使用 |i_CTRL-X_CTRL-]|，或
+		'complete' 包含 "`t`" 或 "`]`" 时)。
+  'r'		传入 tagfunc 的首个参数应被视作 |pattern| (见 |tag-regexp|)，
+		例如: >
+		  :tag /pat
+<		插入模式下的补全也会加入此标志位。
+		此标志位未给出时，参数一般按本义解析为完整标签名。
+
+注意 设置 'tagfunc' 后，|tag-priority| 描述的标签优先级规则不再适用。优先级完
+全由函数返回列表内元素的先后顺序决定。
+								*E987*
+函数应返回字典项目构成的列表。每个字典至少包含以下条目，所有值类型均为字符串:
+	name		标签名。
+	filename	标签定义所在文件名。可为当前目录下的相对路径或绝对路
+			径。
+	cmd		用于在文件内定位标签的 Ex 命令。可为行号、搜索模式或其
+			他 Ex 命令，和标签文件使用的格式相同 (见
+			|tags-file-format|)。搜索模式必须以 "/" 或 "?" 前后包
+			围。非法值触发 |E987|。
+注意 此格式与 |taglist()| 输出格式类似，因此可以直接重用后者的返回结果。
+以下是可选条目:
+	kind		标签类型。
+	user_data	存入标签栈中的自定义数据，用于在多次操作之间区分标签。
+
+函数返回 |v:null| 而非列表时，Vim 会回退执行标准标签查找逻辑。
+
+在 'tagfunc' 内不允许改动标签栈。 *E986*
+在 'tagfunc' 内不允许关闭窗口或切换窗口。 *E1299*
+
+以下是 'tagfunc' 函数的假想实现示例。使用 |taglist()| 输出，再按文件名逆序排序
+返回标签列表。
+>vim
+	function CompareFilenames(item1, item2)
+	  let f1 = a:item1['filename']
+	  let f2 = a:item2['filename']
+	  return f1 >=# f2 ? -1 : f1 <=# f2 ? 1 : 0
+	endfunction
+
+	function TagFunc(pattern, flags, info)
+	  let result = taglist(a:pattern)
+	  call sort(result, "CompareFilenames")
+
+	  return result
+	endfunc
+	set tagfunc=TagFunc
+<
+注意: 此处执行 |taglist()| 时，不会递归触发 'tagfunc' 函数。
+
+ vim:tw=78:ts=8:noet:ft=help:norl:

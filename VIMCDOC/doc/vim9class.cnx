@@ -1,0 +1,1182 @@
+*vim9class.txt*	适用于 Vim 9.2 版本。  最近更新: 2026年7月
+
+
+		  VIM 参考手册	by Bram Moolenaar
+				译者: Willis
+
+
+Vim9 类、对象、接口、类型和枚举。				*vim9-class*
+
+1.  总览			|Vim9-class-overview|
+2.  简单类			|Vim9-simple-class|
+3.  类变量与类方法		|Vim9-class-member|
+4.  使用抽象类			|Vim9-abstract-class|
+5.  使用抽象接口		|Vim9-using-interface|
+6.  类的更多细节		|Vim9-class|
+7.  类型定义			|Vim9-type|
+8.  枚举			|Vim9-enum|
+
+9.  设计思路
+10. 未来规划
+
+==============================================================================
+
+1. 总览						*Vim9-class-overview*
+
+专业术语叫 "面向对象编程"。这个主题有大量的学习资料。本文档假定读者已掌握相关
+基本概念，着重说明 |Vim9| 脚本提供的功能，并附带有效使用此类功能的有助提示。
+Vim9 类和对象不支持老式 Vim 脚本和老式函数。
+
+基础单元是对象:
+- 对象保存状态。包含一或多个可保存值的变量。
+- 对象提供函数，用于访问和操作状态。这些函数在 "对象上" 调用，这正是数据与操作
+  数据的代码分离的传统方式的区别所在。
+- 对象有定义良好的接口，包括带类型标注的成员变量和方法。
+- 对象由类创建，同一类生成的所有对象接口一致。接口并非动态，运行时无法变更。
+
+对象只能由类创建。类提供:
+- new() 方法，即构造函数，返回该类的一个对象。通过类名调用: MyClass.new()。
+- 类所有对象共享的状态: 类变量 (类成员)。
+- 层级结构，支持超类和子类，即继承。
+
+接口用于指定对象具备的属性:
+- 同一对象可声明实现多个接口。
+- 实现同一接口的不同对象，可以用相同方式调用。
+
+类层级结构仅支持单一继承。其他需要可用接口实现。
+
+类模型 ~
+
+可以自由设计类模型。重点关注开发目标，不必强行映射现实世界。这点容易产生困惑，
+教材常用现实事物讲解类之间的关系，会让人误以为模型必须复刻现实。不必如此！模型
+应当匹配实际业务目的。
+
+要记住组合 (一个对象包含其他对象) 通常优于继承 (一个对象扩展另一个对象)。不要
+耗费时间寻找最优类模型，也不必纠结正方形是矩形还是矩形是正方形这类问题，并无实
+际意义。
+
+
+==============================================================================
+
+2.  简单类					*Vim9-simple-class*
+
+从一个简单示例开始: 一个保存文本位置的类 (稍后会介绍更高效的写法):
+>vim9
+	vim9script
+	class TextPosition
+	   var lnum: number
+	   var col: number
+
+	   def new(lnum: number, col: number)
+	      this.lnum = lnum
+	      this.col = col
+	   enddef
+
+	   def SetLnum(lnum: number)
+	      this.lnum = lnum
+	   enddef
+
+	   def SetCol(col: number)
+	      this.col = col
+	   enddef
+
+	   def SetPosition(lnum: number, col: number)
+	      this.lnum = lnum
+	      this.col = col
+	   enddef
+	 endclass
+<							*object* *Object*
+调用 new() 方法为该类创建对象: >
+
+	var pos = TextPosition.new(1, 1)
+
+可直接访问对象变量 "lnum" 和 "col": >
+
+	echo $'文本位置为 ({pos.lnum}, {pos.col})'
+<						    *E1317* *E1327* *:this*
+用过其他面向对象语言就会发现，在 Vim 类定义内部访问对象成员需要 "this." 前缀。
+这和 Java 和 TypeScript 等语言不同。此命名规则方便快速识别对象成员。不带
+"this." 前缀的变量就是非对象变量。
+
+							*E1411*
+在类定义外部，用对象名加句号加成员，访问对象方法与变量: >
+
+	pos.lnum
+	pos.SetCol(10)
+<
+							*E1405*
+类名不能用作表达式，也不能出现在赋值语句的左侧。
+
+对象变量写入权限 ~
+						    *read-only-variable*
+现在尝试直接修改对象变量: >
+
+	pos.lnum = 9
+<							*E1335*
+会报错！因为对象变量缺省只可读，不可写。因此 TextPosition 类为此提供了方法: >
+
+	pos.SetLnum(9)
+
+只读对象变量是最常见、最安全的策略。读取变量值一般没有问题，但写入可能会有需要
+特别处理的副作用。本例中，SetLnum() 方法可校验行号是否合法，如果非法可以报错或
+自动修正为最近的合法值。
+					*:public* *public-variable* *E1331*
+如果不担心副作用，允许随时修改对象变量，可将其标记为 public: >
+
+	public var lnum: number
+	public var col: number
+
+此时不再需要 SetLnum()、SetCol() 和 SetPosition() 等方法，可直接写入
+"pos.lnum" 不报错。
+							*E1326*
+试图对尚不存在的对象变量赋值，会报错: >
+	pos.other = 9
+<	E1326: 在对象 "TextPosition" 中未找到变量: other ~
+
+							*E1376*
+不能通过类名访问对象变量。
+
+受保护变量 ~
+					*protected-variable* *E1332* *E1333*
+另一方面，如果不想在类及其子类外部直接读取对象变量，可将其标记为受保护。方法是
+在变量名前加入下划线前缀: >
+
+	var _lnum: number
+	var _col: number
+
+此时需要方法读取受保护变量值。常称为取值器 (getter)。方法名推荐以 "Get" 开
+头: >
+
+	def GetLnum(): number
+	   return this._lnum
+	enddef
+
+	def GetCol(): number
+	   return this._col
+	enddef
+
+此例不甚有用，变量直接设为 public 即可。当需要加入值校验逻辑时，受保护变量才有
+意义。例如，要将行号限制在总行数之内: >
+
+	def GetLnum(): number
+	   if this._lnum > this._lineCount
+	      return this._lineCount
+	   endif
+	   return this._lnum
+	enddef
+
+受保护方法 ~
+						*protected-method* *E1366*
+要使对象方法只能被同类其他方法调用，而在类外不可见，可将其标记为受保护。方法是
+在方法名前加入下划线前缀: >
+
+    class SomeClass
+	def _Foo(): number
+	  return 10
+	enddef
+	def Bar(): number
+	  return this._Foo()
+	enddef
+    endclass
+<
+在类外部调用受保护方法会报错 (使用上面这个类): >
+
+    var a = SomeClass.new()
+    a._Foo()
+<
+简化 new() 方法 ~
+						*new()* *constructor*
+另见 |default-constructor| 和 |multiple-constructors|。
+
+许多构造函数的作用就是给对象变量赋值。以下模式会频繁出现:
+>vim9
+	 class SomeClass
+	   var lnum: number
+	   var col: number
+
+	   def new(lnum: number, col: number)
+	      this.lnum = lnum
+	      this.col = col
+	   enddef
+	 endclass
+<
+							*E1390*
+这段代码需要反复出现，类型也要写两遍。因为这种场景非常普遍，系统提供了 new()
+的简写方式: >
+
+	   def new(this.lnum, this.col)
+	   enddef
+
+语义非常直观: 以带 "this." 的对象变量名作为 new() 参数，意味着调用 new() 时，
+传入的实参直接赋给定义对象变量。此写法源自 Dart 语言。
+
+将这种 new() 简写和标记 public 变量组合，可编写最初示例的简短版本:
+>vim9
+	class TextPosition
+	   public var lnum: number
+	   public var col: number
+
+	   def new(this.lnum, this.col)
+	   enddef
+
+	   def SetPosition(lnum: number, col: number)
+	      this.lnum = lnum
+	      this.col = col
+	   enddef
+	 endclass
+
+新对象的构造顺序是:
+1. 分配并清空内存。所有值初始化为零/假值/空值。
+2. 依次执行每个声明时带初始器的对象变量的初始化表达式并赋值。按变量声明顺序进
+   行。
+3. 处理 new() 方法的 "this.name" 参数形式，完成赋值。
+4. 执行 new() 方法的代码体。
+
+如果该类继承一个基类，流程相同。第 2 步中会先初始化基类对象变量。无需手动调用
+"super()" 或在基类上调用 "new()"。
+
+							*E1365*
+定义 new() 方法时，不能指定返回类型。总是返回类的对象襳。
+
+new() 方法可写作 "_new()"，将其标识为受保护方法。用于实现单例设计模式。
+
+							*E1386*
+调用对象方法时，方法名前必须带上对象变量名。不能通过类名调用对象方法。
+
+==============================================================================
+
+3.  类变量与类方法				*Vim9-class-member*
+
+				    *:static* *E1329* *E1337* *E1338* *E1368*
+类成员通过 "static" 关键字声明。在定义类的内部，可直接使用类成员名，无需前缀:
+>vim9
+	class OtherThing
+	   var size: number
+	   static var totalSize: number
+
+	   def new(this.size)
+	      totalSize += this.size
+	   enddef
+	endclass
+<							*E1340* *E1341*
+因为类成员按本名使用，不允许方法参数名或局部变量名遮蔽同名类成员。
+
+					    *E1374* *E1375* *E1384* *E1385*
+在定义类外部要访问类成员，必须加上类名前缀。不能通过对象访问类成员。
+
+和对象成员一样，可通过下划线前缀使类成员访问受保护，也可用 "public" 前缀设为公
+有: >
+
+    class OtherThing
+	static var total: number	  # 全体可读，仅类可写
+	static var _sum: number		  # 仅类可读写
+	public static var result: number  # 全体可读写
+    endclass
+<
+							*class-method*
+类方法同样通过 "static" 声明。类方法可访问类变量，但不能访问对象变量，也不能使
+用 "this" 关键字: >
+
+	class OtherThing
+	   var size: number
+	   static var totalSize: number
+
+	   # 清空总大小变量并返回清空前的值。
+	   static def ClearTotalSize(): number
+	      var prev = totalSize
+	      totalSize = 0
+	      return prev
+	   enddef
+	endclass
+
+类内部可按本名直接调用类方法，类外部则必须加类名前缀:
+`OtherThing.ClearTotalSize()`。此外，在类变量初始器、匿名函数和嵌套函数等特殊
+上下文中，访问公有类方法也必须加类名前缀:
+>
+    class OtherThing
+	static var name: string = OtherThing.GiveName()
+
+	static def GiveName(): string
+	    def DoGiveName(): string
+		return OtherThing.NameAny()
+	    enddef
+
+	    return DoGiveName()
+	enddef
+
+	static def NameAny(): string
+	    return "any"
+	enddef
+    endclass
+<
+
+和对象方法一样，可通过下划线前缀使类方法受保护: >
+
+    class OtherThing
+	static def _Foo()
+	    echo "Foo"
+	enddef
+	def Bar()
+	    _Foo()
+	enddef
+    endclass
+<
+							*E1370*
+注意 构造函数不能声明为 "static"。调用方式虽然类似于类方法，但执行时属于对象方
+法；可以访问 "this"。
+
+要在子类中访问基类的类方法和类变量，必须使用类名前缀，和类外部访问的通用写法一
+致: >
+
+    vim9script
+    class Vehicle
+	static var nextID: number = 1000
+	static def GetID(): number
+	    nextID += 1
+	    return nextID
+	enddef
+    endclass
+    class Car extends Vehicle
+	var myID: number
+	def new()
+	    this.myID = Vehicle.GetID()
+	enddef
+    endclass
+<
+类变量和类方法不被子类继承。子类可声明与基类同名的类变量或类方法。使用时，根据
+当前所在类，选用对应的类成员。子类的类成员类型与基类可以不同。
+
+类或对象方法名的双下划线 (__) 前缀，保留给未来使用。
+
+					*object-final-variable* *E1409*
+|:final| 关键字可将类或对象变量设为不可修改。例如: >
+
+    class A
+	final v1 = [1, 2]		# final 对象变量
+	public final v2 = {x: 1}	# final 对象变量
+	static final v3 = 'abc'		# final 类变量
+	public static final v4 = 0z10	# final 类变量
+    endclass
+<
+final 变量仅允许在构造函数内修改。示例: >
+
+    class A
+	final v1: list<number>
+	def new()
+	    this.v1 = [1, 2]
+	enddef
+    endclass
+    var a = A.new()
+    echo a.v1
+<
+注意 final 变量值内部仍可被修改。示例: >
+
+    class A
+	public final v1 = [1, 2]
+    endclass
+    var a = A.new()
+    a.v1[0] = 6			# 正确
+    a.v1->add(3)		# 正确
+    a.v1 = [3, 4]		# 报错
+<
+							*E1408*
+接口不支持 final 变量。类方法或对象方法也不支持 final。
+
+					*object-const-variable*
+|:const| 关键字可将类或对象变量及其值同时设为不可修改。示例: >
+
+    class A
+	const v1 = [1, 2]		# const 对象变量
+	public const v2 = {x: 1}	# const 对象变量
+	static const v3 = 'abc'		# const 类变量
+	public static const v4 = 0z10	# const 类变量
+    endclass
+<
+const 变量仅允许在构造函数内修改。示例: >
+
+    class A
+	const v1: list<number>
+	def new()
+	    this.v1 = [1, 2]
+	enddef
+    endclass
+    var a = A.new()
+    echo a.v1
+<
+const 变量及其值内部都不能被修改。示例: >
+
+    class A
+	public const v1 = [1, 2]
+    endclass
+    var a = A.new()
+    a.v1[0] = 6			# 报错
+    a.v1->add(3)		# 报错
+    a.v1 = [3, 4]		# 报错
+<
+							 *E1410*
+接口不支持 const 变量。类方法或对象方法也不支持 const。
+
+==============================================================================
+
+4.  使用抽象类					*Vim9-abstract-class*
+
+抽象类用作至少一个子类的基底。在类建模中常会遇到这种情景，多个类拥有可复用的共
+同属性，但仅靠这些属性，不足以创建可实例化对象的类。为此可定义抽象类。子类必须
+先扩展抽象类，补齐缺失的状态和/或方法，才能够用于创建对象。
+
+例如，Shape (图形) 类可保存 color (颜色) 和 thickness (线条粗细)。但因为缺少图
+形类型信息。不能直接创建 Shape 对象。Shape 作为基类，可供 Square 和 Triangle
+类继承，后两者可以实例化。例如:
+>vim9
+	abstract class Shape
+	   var color = Color.Black
+	   var thickness = 10
+	endclass
+
+	class Square extends Shape
+	   var size: number
+
+	   def new(this.size)
+	   enddef
+	endclass
+
+	class Triangle extends Shape
+	   var base: number
+	   var height: number
+
+	   def new(this.base, this.height)
+	   enddef
+	endclass
+<
+抽象类定义方式与普通类一致，区别在于抽象类不能拥有 new() 方法。 *E1359*
+
+					    *abstract-method* *E1371* *E1372*
+可在抽象类中，通过在定义前加 "abstract" 前缀，定义抽象方法: >
+
+	abstract class Shape
+	   abstract def Draw()
+	endclass
+<
+抽象类中的类方法不能声明为抽象方法。
+
+						*E1404*
+接口内的方法不能同时是抽象方法。
+
+						*E1373*
+扩展抽象类的非抽象类必须实现所有的抽象方法。签名 (参数、参数类型及返回类型) 必
+需严格一致。如果方法的返回类型为某类，子类实现可以返回该类本身或其子类的实例。
+
+						*E1431*
+抽象基类中的抽象方法不能被直接调用。
+
+==============================================================================
+
+5.  使用接口					*Vim9-using-interface*
+
+上面 Shape、Square 和 Triangle 的示例，如果提供了计算面积的方法会更实用。为此
+可定义 HasSurface 接口，指定一个返回数值的 Surface() 方法。本例是在上例的扩展:
+>vim9
+	abstract class Shape
+	   var color = Color.Black
+	   var thickness = 10
+	endclass
+
+	interface HasSurface
+	   def Surface(): number
+	endinterface
+
+	class Square extends Shape implements HasSurface
+	   var size: number
+
+	   def new(this.size)
+	   enddef
+
+	   def Surface(): number
+	      return this.size * this.size
+	   enddef
+	endclass
+
+	class Triangle extends Shape implements HasSurface
+	   var base: number
+	   var height: number
+
+	   def new(this.base, this.height)
+	   enddef
+
+	   def Surface(): number
+	      return this.base * this.height / 2
+	   enddef
+	endclass
+<
+				*E1348* *E1349* *E1367* *E1382* *E1383*
+如果类声明实现某个接口，则类中必须出现接口定义的全部成员，且类型保持一致。
+
+接口名可用作类型名: >
+
+	var shapes: list<HasSurface> = [
+				Square.new(12),
+				Triangle.new(8, 15),
+				]
+	for shape in shapes
+	   echo $'面积是 {shape.Surface()}'
+	endfor
+<
+					*E1378* *E1379* *E1380* *E1387*
+接口只能包含对象方法和只读对象变量。接口不能包含可读写对象变量、受保护对象变
+量、受保护对象方法、类变量和类方法。
+
+接口可通过 "extends" 扩展另一个接口。子接口会继承父接口所有的对象变量和方法。
+
+接口不能在函数内部 定义。				*E1436*
+
+==============================================================================
+
+6.  类的更多细节				*Vim9-class* *Class* *class*
+
+定义类 ~
+					*:class* *:endclass* *:abstract*
+类在 `:class` 和 `:endclass` 之间定义。整个类必须写在同一个脚本文件内。无法后
+续追加类成员。
+
+类只能在 |Vim9| 脚本文件中定义。 *E1316*
+类不能在函数内部定义。 *E1429*
+
+同一个脚本文件中可定义多个类建。通常建议仅导出一个主类。但定义类型、枚举和辅助
+类也很有用。
+
+可添加 `:abstract` 关键字前缀，也可使用 `:export`。存在以下几种写法: >
+
+	class ClassName
+	endclass
+
+	export class ClassName
+	endclass
+
+	abstract class ClassName
+	endclass
+
+	export abstract class ClassName
+	endclass
+<
+							*E1314*
+类名应使用驼峰式命名。首字母必须大写。避免和内置类型冲突。
+							*E1315*
+类名之后可用以下可选修饰项。每项最多出现一次。顺序不限，推荐顺序如下: >
+	extends ClassName
+	implements InterfaceName, OtherInterface
+	specifies SomeInterface
+<
+"specifies" 功能目前尚未实现。
+
+						*E1355* *E1369* *E1406*
+变量与方法名不可重复。不支持同名但带不同参数类型的方法重载。不支持同名的公有和
+受保护成员变量。子类不能重用基类已存在的对象变量名。
+
+对象变量初始化 ~
+
+							*E1430*
+类定义时，变量未显式标注类型时会设为 "any"。实例化对象时才确定变量类型。
+
+以下保留字不能用作对象变量名或类变量名: "super"、"this"、"true"、"false"、
+"null"、"null_blob"、"null_channel"、"null_class"、"null_dict"、
+"null_function"、"null_job", "null_list"、"null_object", "null_partial" 和
+"null_string"。
+
+类继承 ~
+							*extends*
+一个类可以继承单个 (扩展) 其他类。 *E1352* *E1353* *E1354*
+基本思路是，基于已有类，扩展新属性。
+
+被继承类通称为 "基类" 或 "超类"。继承类称为 "子类"。
+
+基类的所有对象变量都被子类继承，且不可覆盖 (和部分其他语言不同)。
+
+						*E1356* *E1357* *E1358*
+与对象变量不同，基类对象方法可被子类重写。方法签名 (参数、参数类型和返回类型)
+必须完全一致。如果返回类型为类，子类重写时可返回该类或其子类的实例。使用
+"super." 前缀可以调用基类的同名方法。
+
+						*E1377*
+子类方法的访问权限 (公有或受保护) 应当与基类保持一致。
+
+基类的其他对象方法都会被子类继承。
+
+类方法，包含 "new" 开头的函数，可以像对象方法一样被重写。子类调用基类的同名类
+方法可用基类名前缀；对象方法则应该使用 "super." 前缀。
+
+和其他语言不同，不需要也不能手动调用基类构造函数。子类需要执行基类初始化逻辑
+时，把初始化逻辑放到普通对象方法里，在子类每个构造函数中调用该方法。
+
+如果基类不提供 new() 方法，会自动生成缺省构造函数。缺省构造函数不会被子类继
+承。子类可以自行定义 new() 方法，同样地，如果未定义，系统会自动生成。
+
+
+类实现接口 ~
+					*implements* *E1346* *E1347* *E1389*
+一个类可以实现一个或多个接口。"implements" 关键字只能写一次 *E1350* 。
+多个接口用逗号分隔，同一个接口名只能写一次。 *E1351*
+
+类定义接口 ~
+							*specifies*
+类可以通过命名接口声明自身的对象变量与方法，不必单独定义接口。Java 等很多语言
+通常采用这种方式。
+TODO: 该功能目前尚未实现。
+
+类内部成员 ~
+						*E1318* *E1325* *E1388*
+`:class` 和 `:endclass` 之间的类定义可出现以下成员:
+- 对象变量声明: >
+	var _protectedVariableName: memberType
+	var readonlyVariableName: memberType
+	public var readwriteVariableName: memberType
+- 类变量声明: >
+	static var _protectedClassVariableName: memberType
+	static var readonlyClassVariableName: memberType
+	public static var readwriteClassVariableName: memberType
+- 构造方法: >
+	def new(arguments)
+	def newName(arguments)
+- 类方法: >
+	static def SomeMethod(arguments)
+	static def _ProtectedMethod(arguments)
+- 对象方法: >
+	def SomeMethod(arguments)
+	def _ProtectedMethod(arguments)
+
+对象变量必须指定类型。推荐显式使用 ": {type}" 标注。简单类型也可通过初始器
+(如 "= 123") 让 Vim 自动推断为数值类型。复杂类型或类型不完整时不要依赖自动推
+断。示例: >
+	var nameList = []
+这种形式仅指定列表，但列表项类型未知。更好写法是: >
+	var nameList: list<string>
+无需手动初始化，列表缺省已为空。
+							*E1330*
+部分类型禁止使用，例如 "void"、"null" 和 "v:none"。
+
+内置对象方法 ~
+                                                      *builtin-object-methods*
+|empty()|、|len()| 和 |string()| 这类内置函数可用于对象。对象可实现内置函数的
+同名方法，返回该类对象专属值。
+
+							*E1412*
+支持以下内置方法:
+							*object-empty()*
+    empty()  被内置 |empty()| 函数调用，判断对象是否为空。如果类未实现此方法，
+	     返回 true。该方法不接受参数，返回布尔型。
+							*object-len()*
+    len()    被内置 |len()| 函数调用，获取对象长度。如果类未实现此方法，报错且
+	     返回零。该方法不接受参数，返回数值。
+							*object-string()*
+    string() 被内置 |string()| 函数调用，获取对象文本表示。|:echo| 输出对象时
+	     也会调用。如果类未实现此方法，使用内置缺省对象文本表示。该方法不
+	     接受参数，返回字符串。
+
+							*E1413*
+类方法不能用作内置对象方法。
+
+定义接口 ~
+			*interface* *Interface* *:interface* *:endinterface*
+接口在 `:interface` 和 `:endinterface` 之间定义。可加前缀 `:export`: >
+
+	interface InterfaceName
+	endinterface
+
+	export interface InterfaceName
+	endinterface
+<							*E1344*
+接口可声明对象变量，和类写法类似，但不能带初始器表达式。
+
+							*E1345*
+接口可用 `:def` 声明方法，写明参数与返回类型，但不带函数体，也无需 `:enddef`。
+示例: >
+
+	interface HasSurface
+	   var size: number
+	   def Surface(): number
+	endinterface
+
+接口名首字母必须大写。 *E1343*
+可用 "Has" 前缀，直观判断为接口名，并提示其提供的能力。
+接口只能在 |Vim9| 脚本文件中定义。 *E1342*
+接口不能用 "implement" 实现其他接口，但可用 "extend" 扩展其他接口。 *E1381*
+
+null 对象 ~
+
+变量声明为对象类型但未初始化时，值为 null。访问 null 对象时，Vim 经常无法确定
+对应的类。从而无法检查成员变量名是否正确，此时会抛出 "使用空对象" 错误，即使变
+量名本身非法也是如此。 *E1360* *E1362*
+
+缺省构造函数 ~
+							*default-constructor*
+如果定义类时未提供 new() 方法，会自动生成缺省构造函数。缺省构造函数的参数对应
+每个对象变量，顺序与变量声明顺序一致。示例类如下: >
+
+	class AutoNew
+	   var name: string
+	   var age: number
+	   var gender: Gender
+	endclass
+
+则对应的缺省构造函数等价于: >
+
+	def new(this.name = v:none, this.age = v:none, this.gender = v:none)
+	enddef
+
+"= v:none" 缺省值代表参数可选。因此可不带任何参数调用 `new()`。此时不会给变量
+赋值，对象变量使用类型缺省值。更实用的带缺省值的示例: >
+
+	class TextPosition
+	   var lnum: number = 1
+	   var col: number = 1
+	endclass
+
+要使构造函数有必需参数，必须手动定义。例如上面的 AutoNew 类，要求必须传入 name
+的构造函数写法如下: >
+
+	def new(this.name, this.age = v:none, this.gender = v:none)
+	enddef
+<
+使用缺省 new() 方法时，后续修改类中对象变量的声明顺序，所有调用缺省构造函数的
+调用者都需要同步修改。为了避免这一点，手动定义无参的 mew() 方法。
+
+							*E1328*
+注意 此处参数缺省值只能使用 "v:none"。要初始化对象变量，直接在其声明处书写。这
+样，要查看变量缺省值，只需在同一个位置查找。
+
+缺省构造函数中会包含全部对象变量，受保护变量也不例外。
+
+如果类继承其他类，基类的对象变量排在参数列表最前面。
+
+
+多个构造函数 ~
+						*multiple-constructors*
+一个类通常只有一个 new() 构造函数。如果经常需要同一组参数实例化对象，可新增其
+他包含该组参数的构造函数，简化代码，例如，如果经常使用黑色: >
+
+	def new(this.garment, this.color, this.size)
+	enddef
+	...
+	var pants = new(Garment.pants, Color.black, "XL")
+	var shirt = new(Garment.shirt, Color.black, "XL")
+	var shoes = new(Garment.shoes, Color.black, "45")
+
+要避免每次重复传入相同参数，可新增第二个构造函数内置该参数值: >
+
+	def newBlack(this.garment, this.size)
+	   this.color = Color.black
+	enddef
+	...
+	var pants = newBlack(Garment.pants, "XL")
+	var shirt = newBlack(Garment.shirt, "XL")
+	var shoes = newBlack(Garment.shoes, "9.5")
+
+注意 构造方法名必须以 "new" 开头。只要不存在名为 "new()" 的方法，即使有其他以
+new 开头的额外构造函数，也会自动生成缺省构造函数。
+
+对象使用变量类型 "any" ~
+							*obj-var-type-any*
+"any" 类型变量可存放任意对象。示例:
+>
+    vim9script
+    class A
+	var n = 10
+	def Get(): number
+	    return this.n
+	enddef
+    endclass
+
+    def Fn(o: any)
+	echo o.n
+	echo o.Get()
+    enddef
+
+    var a = A.new()
+    Fn(a)
+<
+此例中，Vim 编译时无法决定函数 Fn() 参数 "o" 的类型。它既可以是 |Dict|，也可以
+是 |Object| 值。只有当运行时确定类型后，才能查找其成员变量和方法。性能较差，所
+以应尽量使用更精确的类型，提升执行效率。
+
+类中方法的编译 ~
+							*class-compile*
+|:defcompile| 命令可于编译类内定义的全部类方法和对象方法: >
+
+	defcompile MyClass	# 编译 "MyClass" 类
+	defcompile		# 编译当前脚本内的所有类
+<
+==============================================================================
+
+7.  类型定义				*typealias* *Vim9-type* *:type*
+
+					*E1393* *E1396* *E1397* *E1398*
+类型定义用于为指定类型声明给定别名。也被称作 "类型别名"。所有可用内置类型的位
+置都可用类型别名。示例:
+>vim9
+
+    type ListOfStrings = list<string>
+    var s: ListOfStrings = ['a', 'b']
+
+    def ProcessStr(str: ListOfStrings): ListOfStrings
+	return str
+    enddef
+    echo ProcessStr(s)
+<
+							*E1394*
+类型别名的首字母必须大写。只能对已存在的类型创建别名。
+
+							*E1399*
+类型别名只能在脚本顶层创建，不能写在函数内部。类型别名可导出，跨脚本使用。
+
+							*E1403* *E1407*
+类型别名不能用作表达式，也不能出现在赋值语句的左侧。
+
+对类型别名调用 |typename()| 函数，可返回它指代的原始类型:
+>vim9
+    vim9script
+    type ListOfStudents = list<dict<any>>
+    echo typename(ListOfStudents)
+    # typealias<list<dict<any>>>
+<
+==============================================================================
+
+8.  枚举					*Vim9-enum* *:enum* *:endenum*
+
+						*enum* *E1418* *E1419* *E1420*
+枚举是一种特殊类型，取值仅能为预定义的值列表中的一项。示例:
+>vim9
+
+    enum Color
+	White,
+	Red,
+	Green, Blue, Black
+    endenum
+<
+						*enumvalue* *E1422* *E1428*
+枚举值间以逗号分隔。一行可列出多个枚举值。最后一个枚举值后不应加逗号。枚举值不
+能重复。
+
+可用枚举名后跟值名访问枚举值: >
+
+    var a: Color = Color.Blue
+<
+枚举是一种特殊的类，每个枚举值相当于类的一个实例。但不能用常规 |new()| 方法手
+动创建枚举实例。
+
+枚举只能在 |Vim9| 脚本文件中定义。			*E1414*
+枚举不能在函数内部定义。				*E1435*
+
+							*E1415*
+枚举名首字母必须大写。枚举值名首字母大小写均可。
+
+							*E1416*
+枚举可实现接口，但不能扩展类: >
+
+    enum MyEnum implements MyIntf
+	Value1,
+	Value2
+
+	def SomeMethod()
+	enddef
+    endenum
+<
+							*enum-constructor*
+枚举中的枚举值对象内部通过 |new()| 方法构造。传入构造函数的参数可在枚举值名后
+传入，形式类似函数调用。缺省构造函数不带参数。
+
+							*E1417*
+枚举内部可包含类变量、类方法、对象变量和对象方法。但枚举内不能使用抽象
+|:abstract| 方法。
+
+下例展示了带对象变量和方法的枚举:
+>vim9
+    vim9script
+    enum Planet
+	Earth(1, false),
+	Jupiter(95, true),
+	Saturn(146, true)
+
+	var moons: number
+	var has_rings: bool
+	def GetMoons(): number
+	    return this.moons
+	enddef
+    endenum
+    echo Planet.Jupiter.GetMoons()	# 95
+    echo Planet.Earth.has_rings		# false
+<
+					*E1421* *E1423* *E1424* *E1425*
+枚举本身及枚举值不可变，也不能直接用作数值或字符串类型。但枚举值可声明可变对象
+变量。
+
+						*enum-name* *E1427*
+每个枚举值对象包含内置 "name" 对象变量，包含该枚举值名。变量只读。
+
+						*enum-ordinal* *E1426*
+每个枚举值拥有序号，从 0 开始。可通过内置 "ordinal" 对象变量访问。变量只读。
+注意修改枚举值的书写顺序，相应的序号也会随之变化。
+
+						*enum-values*
+所有枚举值可用枚举类变量 "values" 访问。这是枚举对象组成的列表。变量只读。
+
+示例:
+>vim9
+    vim9script
+    enum Planet
+	Mercury,
+	Venus,
+	Earth
+    endenum
+
+    echo Planet.Mercury
+    echo Planet.Venus.name
+    echo Planet.Venus.ordinal
+    for p in Planet.values
+	# ...
+    endfor
+<
+总结一下，枚举是一种特殊类，类变量包含每个枚举值对应的对象，以及由所有枚举值组
+成的列表，对象变量则分别表示枚举值的名称和序数。示例，枚举: >
+
+    enum Planet
+	Mercury,
+	Venus
+    endenum
+<
+等价于如下类定义: >
+
+    class Planet
+      public static final Mercury: Planet = Planet.new('Mercury', 0)
+      public static final Venus: Planet = Planet.new('Venus', 1)
+
+      public static const values: list<Planet> = [Planet.Mercury, Planet.Venus]
+
+      public const name: string
+      public const ordinal: number
+    endclass
+<
+枚举可以像普通类一样定义对象变量与方法:
+>vim9
+    vim9script
+    enum Color
+	Cyan([0, 255, 255]),
+	Magenta([255, 0, 255]),
+	Gray([128, 128, 128])
+
+	var rgb_values: list<number>
+
+	def Get_RGB(): list<number>
+	    return this.rgb_values
+	enddef
+    endenum
+    echo Color.Magenta.Get_RGB()
+<
+==============================================================================
+
+9.  设计思路
+
+Vim9 类的大部分设计参考现代主流和新兴语言，例如 Java、TypeScript、Dart。语法做
+了适配 Vim 脚本风格的改造，例如使用 `endclass` 收尾，而非用大括号包裹整个类。
+
+面向对象语言里有些早期语法特性，在当年是创新，后来发现并非最优，但因为大量存量
+代码，已经无法修改。Vim 的类系统是全新实现，因此拥有重新取舍的自由度，能够设计
+出比老式语言更简洁、统一的语法，同时保持和主流语言相近的风格，降低学习成本。
+
+一些现代语言加入了大量花哨特性，Vim 并不需要；但其中一些优秀设计可以借鉴。最终
+方案是以主流语言通用范式为基础，舍弃有缺陷的设计，保留易于理解的优良特性。
+
+设计决策遵循的核心原则:
+- 保持简洁
+- 行为符合直觉，尽量和其他语言保持一致
+- 规避重蹈覆辙
+- 尽量让代码含义自明，减少开发者查阅帮助文档的必要
+- 保持一致性
+- 面向中等规模插件开发，而非巨型项目
+
+
+使用 new() 作为构造函数 ~
+
+很多语言用类名作为构造函数。缺点是类名通常很长。一旦修改类名，所有构造函数都需
+要同步改名。问题不大，但终究不太理想。
+
+TypeScript 这类语言使用专用的 "constructor()" 函数名，方案更好。但代码中需要用
+"new" 或 "new()" 创建实例，这和 "constructor()" 之间缺少直观关联。
+
+|Vim9| 选择为所有构造函数统一使用 new() 作为方法名，调用方和构造方法之间的对应
+关系一目了然。
+
+不支持构造函数重载 ~
+
+老式 Vim 脚本与 |Vim9| 脚本都不支持方法重载，也就是不能用同名但带不同参数类型
+定义多个方法。因此仅能存在一个 new() 构造函数。
+
+虽然 Vim9 带有类型标注，技术上可以支持重载，但会显著增加复杂度。阅读一段 new()
+调用时，需要推导每个实参的类型，才能判断实际调用哪一个构造函数；如果参数是其他
+函数返回值，还要追溯该函数的返回类型，阅读成本很高。
+
+实际替代方案是，多个构造函数使用不同名称，但名称必须以 new 开头。这样可以支持
+多组不同参数的构造逻辑，一眼就能看清调用的是哪一个构造函数，同时可以完成严格类
+型校验。
+
+不支持方法重载 ~
+
+理由和构造函数一致: 参数类型经常不易直接判定，很难分辨实际调用哪个重载版本。直
+接使用不同的方法名更清晰，由类型校验保证正确性。Vim9 也因此舍弃了基于重载的多
+态，但实际用处不大。
+
+单继承与接口 ~
+
+部分语言支持多继承。虽然某些场景有用，但会大幅复杂化类的规则。Vim 选择单继承，
+通过接口声明类具备的能力，方案更简单。主流 Java 就是这套模型，足以满足 Vim 需
+求，契合 "保持简洁" 原则。
+
+类通过显式声明实现接口，直观表达类的设计目标，同时支持完整类型检查。一旦接口发
+生变更，所有实现该接口的类都会被校验。不采用只要方法签名匹配就自动视作实现接口
+的隐含机制，这种机制过于脆弱，容易产生隐蔽问题。
+
+统一使用 "this.variable" 访问对象成员 ~
+
+很多语言访问对象变量的写法随上下文变化。有时必须写 "this." 消除歧义，声明时又
+不带 "this."，风格不一致，容易混淆。
+
+一个常见的痛点是，构造函数参数与对象变量同名，此时在函数体内必须写 "this." 访
+问对象变量，其他场景又可以省略。代码里混杂带与不带 "this." 的写法，一致性差。
+
+|Vim9| 类规定，要访问对象方法和对象变量，一律要写 "this." 前缀。规则简单统一。
+在类内部阅读代码时，可以直接区分对象变量和其他变量。
+
+使用类变量 ~
+
+通过 "static variable" 声明类变量是常见做法，此处并无新意。在 |Vim9| 脚本内
+部，可直接通过名字访问类变量，和在方法中使用脚本局部变量很像。对象变量必须带
+"this." 前缀，因此一眼就能区分变量类型。
+
+TypeScript 在类内部访问类变量也要求写类名前缀。这存在两个问题: 类名可能很长，
+占用代码空间，而且一旦修改类名，所有相关位置都要同步修改。
+
+声明对象变量与类变量 ~
+
+核心取舍是变量声明是否沿用普通变量声明关键字 "var"。
+TypeScript 不用: >
+	class Point {
+	  x: number;
+	  y = 0;
+	}
+
+仿照此方格，Vim 的对象变量本可以写成: >
+	class Point
+	  this.x: number
+	  this.y = 0
+	endclass
+
+部分用户反馈，这种写法看起来更像赋值，而非声明。增加 "var" 并去掉 "this." 后，
+观感得到改善: >
+	class Point
+	  var x: number
+	  var y = 0
+	endclass
+
+类变量声明需要搭配 "static" 关键字，当时有几种候选方案。
+方案 1: 省略 "var": >
+	class Point
+	  var x: number
+	  static count = 0
+	endclass
+
+方案 2: "var" 写在 "static" 前: >
+	class Point
+	  var x: number
+	  var static count = 0
+	endclass
+
+方案 3: "var" 写在 "static" 后: >
+	class Point
+	  var x: number
+	  static var count = 0
+	endclass
+
+这与 `static def Func()` 的风格对齐。
+
+是否省略 "var" 没有压倒性的优选方案。支持省略的两个理由是:
+1. TypeScript 等主流语言不使用该关键字
+2. 代码更简洁
+
+但更多语言会重用变量与函数的通用声明语法来定义类变量和类方法。Vim9 的方法也重
+用了普通函数声明语法。为保持一致性，最终决定，类变量声明强制要求写 "var"。
+
+使用 "ClassName.new()" 构造对象 ~
+
+很多语言使用 "new" 运算符实例化对象，这种设计其实有点别扭，因为构造函数是由带
+参数的方法实现，但被当作特殊关键字。TypeScript 也有 "new" 关键字，但构造函数名
+为 "constructor()"，两者之间关联不够直观。
+
+|Vim9| 将构造函数命名为 new()，也直接调用 new() 实例化对象，简单直白。其他语言
+写 "new ClassName()"，但并不存在名为 ClassName() 的方法，而是类名为 ClassName
+的类内部带另一个名字的构造函数，非常混淆。
+
+Vim9 类的访问权限 ~
+						    *vim9-access-modes*
+Vim9 类支持的变量访问级别及其含义如下:
+	|public-variable|	任意位置可读写
+	|read-only-variable|	任意位置可读，仅本类及其子类内部可写
+	|protected-variable|	仅本类及其子类内部可读写
+
+方法的访问权限与之类似，但没有只读模式。
+
+
+对象变量默认读权限 ~
+
+部分用户会觉得对象变量权限规则不对称，而这是有意设计。读取与修改是完全不同的操
+作。读取没有副作用，可反复执行而不改变对象状态；修改会产生副作用，甚至会连锁影
+响其他对象。
+
+新增对象变量时，开发者一般只关注类型是否正确，并且通常在 new() 构造函数中完成
+赋值。因此缺省只开放读取权限，大多数场景可以正常工作。如果尝试直接写入，会触发
+报错，促使开发者思考是否应当开放写入权限，减少代码缺陷。
+
+
+
+用下划线标记受保护对象变量 ~
+
+受保护对象变量，仅能在本类和子类内部读写，类外部无法访问。变量名前加下划线是直
+观标识手段，不少编程语言都将其作为编码规范建议。
+
+如果后续要改为允许外部访问，需要把所有位置的下划线全部删掉。但该变量仅在本类和
+子类中出现，查找和修改工作量不大。
+
+反过来改动成本更高: 把原本对外公开的变量改成受保护，只需在类内变量名增加下划
+线，但外部所有引用该变量的代码都要逐一找到并修改，甚至要改成调用 "set" 方法。
+这对应工程实践里的现实问题，即收回访问权限，需要修改全部外部调用点。
+
+原本也可以设计 "protected" 关键字，就像 "public" 用于开放访问那样。但这里选择
+不新增关键字，以此减少关键字总量。
+
+不提供私有对象变量 ~
+
+部分语言提供多种访问控制修饰符。最常见的是 "protected"，不过不同语言对它的定义
+并不统一。除此之外还有 "shared"、"private"、"package"，甚至 "friend"。
+
+这类复杂规则会提升使用负担。多人协作维护大型复杂项目时，为防止重构类结构时出
+错，这套机制才有价值。
+
+Vim 脚本多用于插件开发，一般是单人或小团队维护。复杂权限规则只会增加使用成本，
+这套额外安全机制并无必要。因此保持精简，不提供更细粒度的访问控制。
+
+
+==============================================================================
+
+10. 未来规划
+
+newSomething() 形式的构造函数能否调用其他构造函数？如果允许，存在哪些限制？
+
+设想:
+- 类的泛型: `class <Tkey, Tentry>`
+- Mixin (织入): 实用性尚不明确，为简化语言暂不列入。
+
+值得新增的特性:
+- 用于测试: Mock 机制
+
+计划提供一个重要类 "Promise"。Vim 为单线程进程，与异步操作连接是插件执行任务而
+不阻塞用户输入的自然方案。这将是一种回调、超时以及错误处理的统一机制。
+
+
+ vim:tw=78:ts=8:noet:ft=help:norl:

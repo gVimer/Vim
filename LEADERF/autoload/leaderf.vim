@@ -609,9 +609,9 @@ function! leaderf#NormalModeFilter(id, winid, key) abort
         exec g:Lf_py printf("ctypes.cast(%d, ctypes.py_object).value._previewResult(True)", a:id)
     elseif key ==? "<F1>"
         exec g:Lf_py printf("ctypes.cast(%d, ctypes.py_object).value.toggleHelp()", a:id)
-    elseif key ==? "<C-Up>"
+    elseif key ==? "<C-Up>" || key ==? '<C-K>' || key==?"L" "修改
         exec g:Lf_py printf("ctypes.cast(%d, ctypes.py_object).value._toUpInPopup()", a:id)
-    elseif key ==? "<C-Down>"
+    elseif key ==? "<C-Down>" || key ==? '<C-J>' || key==?"H" "修改
         exec g:Lf_py printf("ctypes.cast(%d, ctypes.py_object).value._toDownInPopup()", a:id)
     elseif key ==? "<ESC>"
         exec g:Lf_py printf("ctypes.cast(%d, ctypes.py_object).value.closePreviewPopupOrQuit()", a:id)

@@ -49,7 +49,7 @@ fun! vm#themes#search_highlight() abort
   " Init Search highlight.
   let hl = g:VM_highlight_matches
   let g:Vm.Search = hl == 'underline' ? 'Search term=underline cterm=underline gui=underline' :
-        \           hl == 'red'       ? 'Search ctermfg=196 guifg=#ff0000' :
+        \           hl == 'red'       ? 'Search ctermfg=196 guifg=#0000FF' :
         \           hl =~ '^hi!\? '   ? substitute(g:VM_highlight_matches, '^hi!\?', '', '')
         \                             : 'Search term=underline cterm=underline gui=underline'
 endfun
@@ -79,8 +79,8 @@ endfun
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 fun! vm#themes#statusline() abort
-  if !exists('b:visual_multi')
-    return ''
+  if !exists('b:visual_multi') || 1
+    return '多行编辑模式'
   endif
   let v = b:VM_Selection.Vars
   let vm = VMInfos()

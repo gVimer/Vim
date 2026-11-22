@@ -525,7 +525,9 @@ export default class BasicTreeView<T> implements TreeView<T> {
     } catch (e) {
       let errMsg = `Error on tree refresh: ${e}`
       logger.error(errMsg, e)
-      this.nvim.errWriteLine('[coc.nvim] ' + errMsg)
+////////////////////////////////////////////////////////////
+      this.nvim.errWriteLine('[Coc.nVim] ' + errMsg)
+////////////////////////////////////////////////////////////
       release()
     }
   }

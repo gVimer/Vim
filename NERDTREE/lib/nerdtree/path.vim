@@ -58,7 +58,9 @@ function! s:Path.cacheDisplayString() abort
         endif
     endfor
     if !empty(self._bookmarkNames) && g:NERDTreeMarkBookmarks ==# 1
-        let self.cachedDisplayString = self.addDelimiter(self.cachedDisplayString) . ' {' . join(self._bookmarkNames) . '}'
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+        let self.cachedDisplayString = self.addDelimiter(self.cachedDisplayString) . '*'
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     endif
 
     if self.isSymLink
@@ -108,10 +110,14 @@ function! s:Path.changeToDir()
     try
         if g:NERDTreeUseTCD && exists(':tcd') ==# 2
             execute 'tcd ' . dir
-            call nerdtree#echo("Tab's CWD is now: " . getcwd())
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+            call nerdtree#echo("CD到当前目录: " . getcwd())
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
         else
             execute 'cd ' . dir
-            call nerdtree#echo('CWD is now: ' . getcwd())
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+        "call nerdtree#echo("当前工作目录: " . getcwd())
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
         endif
     catch
         throw 'NERDTree.PathChangeError: cannot change CWD to ' . dir
@@ -360,12 +366,13 @@ endfunction
 
 " FUNCTION: Path.getSortOrderIndex() {{{1
 " returns the index of the pattern in g:NERDTreeSortOrder that this path matches
+" 根据后缀名排序不区分大小写
 function! s:Path.getSortOrderIndex()
     let i = 0
     let l:lpc = self.getLastPathComponent(1)
     while i < len(g:NERDTreeSortOrder)
         if g:NERDTreeSortOrder[i] !~? '\[\[-\?\(timestamp\|size\|extension\)\]\]' &&
-        \ l:lpc =~# g:NERDTreeSortOrder[i]
+        \ l:lpc =~? g:NERDTreeSortOrder[i]
             return i
         endif
         let i = i + 1
@@ -518,7 +525,9 @@ function! s:Path._ignorePatternMatches(pattern)
         let pat = strpart(pat,0, len(pat)-8)
     endif
 
-    return self.getLastPathComponent(0) =~# pat
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    return self.getLastPathComponent(0) =~? pat
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 endfunction
 
 " FUNCTION: Path.isAncestor(path) {{{1
@@ -732,11 +741,12 @@ function! s:Path.str(...)
 
     if has_key(options, 'truncateTo')
         let limit = options['truncateTo']
-        if strdisplaywidth(toReturn) > limit-1
-            while strdisplaywidth(toReturn) > limit-1 && strchars(toReturn) > 0
+        if strdisplaywidth(toReturn) > limit-100
+            let toReturn=GetShortPath(toReturn)
+            while strdisplaywidth(toReturn) > 30 && strchars(toReturn) > 0
                 let toReturn = substitute(toReturn, '^.', '', '')
             endwhile
-            if len(split(toReturn, '/')) > 1
+            if len(split(toReturn, '/')) > 30
                 let toReturn = '</' . join(split(toReturn, '/')[1:], '/') . '/'
             else
                 let toReturn = '<' . toReturn

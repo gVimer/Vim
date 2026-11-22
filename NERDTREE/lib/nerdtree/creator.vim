@@ -65,6 +65,9 @@ endfunction
 function! s:Creator.CreateTabTree(name)
     let creator = s:Creator.New()
     call creator.createTabTree(a:name)
+    """"""""""""""""""""""""""""""""""""""""""""
+    exec "normal! H"
+    """"""""""""""""""""""""""""""""""""""""""""
 endfunction
 
 " FUNCTION: s:Creator.createTabTree(a:name) {{{1

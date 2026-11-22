@@ -21,7 +21,7 @@ function! Everything#StartSearch(args)
   if has_key(a:args, 'pattern')
     let pattern = join(a:args['pattern'])
   else
-    let pattern = input("Input pattern: ")
+    let pattern = input("•••••••请输入要搜索的内容:")
   endif
   if empty(pattern)
     return []
@@ -36,12 +36,13 @@ function! Everything#StartSearch(args)
   if !empty(g:Lf_EverythingDefaultDir)
     let dir = g:Lf_EverythingDefaultDir
   else
-    let dir = input("Search in the location: ", "", "dir")
-    if empty(dir)
-      return
-    endif
+    let dir = input("•••••••请输入要搜索的目录:","","dir")
   endif
-  let dir_arg = printf('-path "%s"', dir)
+  if empty(dir)
+    let dir_arg = ''
+  else
+    let dir_arg = printf('-path "%s"', dir)
+  endif
 
   let cmd = printf('%s %s %s %s', cmd, g:Lf_EverythingEsOptions, dir_arg, pattern)
   let s:cache = ''
@@ -50,7 +51,7 @@ function! Everything#StartSearch(args)
   let cp = libcallnr('kernel32.dll', 'GetACP', 0)
   let res = iconv(res, printf('cp%d', cp), &encoding)
   if empty(res)
-    call Everything#util#show_msg('No files found!', 'error')
+    "call Everything#util#show_msg('No files found!', 'error')
     return ['']
   endif
   if matchstr(s:cache, 'Everything IPC window not found, IPC unavailable.') != ""
@@ -131,7 +132,7 @@ function! s:Open_Internal(fname)
     endif
   else
     " Automatically close the window
-    silent! close
+    "silent! close 注释掉这一句
     " Edit the file
     exe 'edit ' . esc_fname
   endif
@@ -142,7 +143,7 @@ function! s:Open_Filter(fname)
   let l:filter = g:Lf_EverythingOpenfileFilter
   let current_ext = fnamemodify(a:fname, ":e")
   for ext in l:filter
-    if ext == current_ext
+    if ext ==? current_ext
       call s:Open_Internal(a:fname)
       return
     endif

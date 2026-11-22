@@ -204,7 +204,10 @@ export class FileLogger extends AbstractLogger {
         let fn = async () => {
           let text: string
           if (this.config.userFormatters !== false) {
-            let parts = [time, stringifyLogLevel(level), `(pid:${process.pid})`, `[${scope}]`]
+////////////////////////////////////////////////////////////////////////////////////////////////
+            //let parts = [time, stringifyLogLevel(level), `(pid:${process.pid})`, `[${scope}]`]
+	    let parts = [stringifyLogLevel(level), `[${scope}]`]
+////////////////////////////////////////////////////////////////////////////////////////////////
             text = `${parts.join(' ')} - ${message}\n`
           } else {
             text = message

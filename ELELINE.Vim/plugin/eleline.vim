@@ -32,7 +32,7 @@ function! ElelineBufnrWinnr() abort
 endfunction
 
 function! ElelineTotalBuf() abort
-  return '[TOT:'.len(filter(range(1, bufnr('$')), 'buflisted(v:val)')).']'
+  return 'TB:'.tabpagenr("$")."●".len(filter(range(1, bufnr('$')), 'buflisted(v:val)')).' | '
 endfunction
 
 function! ElelinePaste() abort
@@ -42,18 +42,18 @@ endfunction
 function! ElelineFsize(f) abort
   let l:size = getfsize(expand(a:f))
   if l:size == 0 || l:size == -1 || l:size == -2
-    return ''
+    return '0K'
   endif
   if l:size < 1024
-    let size = l:size.' bytes'
+    let size = l:size.'B'
   elseif l:size < 1024*1024
-    let size = printf('%.1f', l:size/1024.0).'k'
+    let size = printf('%.1f', l:size/1024.0).'K'
   elseif l:size < 1024*1024*1024
-    let size = printf('%.1f', l:size/1024.0/1024.0) . 'm'
+    let size = printf('%.1f', l:size/1024.0/1024.0) . 'M'
   else
-    let size = printf('%.1f', l:size/1024.0/1024.0/1024.0) . 'g'
+    let size = printf('%.1f', l:size/1024.0/1024.0/1024.0) . 'G'
   endif
-  return '  '.size.' '
+  return ''.size.''
 endfunction
 
 function! ElelineCurFname() abort
@@ -229,6 +229,19 @@ function! ElelineFunction() abort
   return !empty(l:function) ? s:fn_icon.l:function : ''
 endfunction
 
+function! FilePath()
+  return expand('%:t')
+endfunction
+
+function! ReturnLastModifyDate()
+    let m=strftime("%Y/%m/%d",getftime(expand("%p")))
+    if m=="(无效)"
+        return ""
+    else
+        return m
+    endif
+endfunction
+
 function! ElelineCoc() abort
   if s:is_tmp_file()
     return ''
@@ -245,42 +258,79 @@ endfunction
 
 " https://github.com/liuchengxu/eleline.vim/wiki
 function! s:StatusLine() abort
-  let l:bufnr_winnr = s:def('ElelineBufnrWinnr')
-  let l:paste = s:def('ElelinePaste')
+  let l:bufnr    = s:def('ElelineBufnrWinnr')
+  let l:paste    = s:def('ElelinePaste')
   let l:curfname = s:def('ElelineCurFname')
-  let l:branch = s:def('ElelineGitBranch')
-  let l:status = s:def('ElelineGitStatus')
-  let l:error = s:def('ElelineError')
-  let l:warning = s:def('ElelineWarning')
-  let l:tags = '%{exists("b:gutentags_files") ? gutentags#statusline() : ""} '
-  let l:lcn = '%{ElelineLCN()}'
-  let l:coc = '%{ElelineCoc()}'
-  let l:func = '%#ElelineFunction#%{ElelineFunction()}%*'
-  let l:prefix = l:bufnr_winnr.l:paste
-  let l:common = l:curfname.l:branch.l:status.l:error.l:warning.l:tags.l:lcn.l:coc.l:func
+  let l:branch   = s:def('ElelineGitBranch')
+  let l:status   = s:def('ElelineGitStatus')
+  let l:error    = s:def('ElelineError')
+  let l:warning  = s:def('ElelineWarning')
+  let l:tags     = '%{exists("b:gutentags_files") ? gutentags#statusline() : ""} '
+  let l:lcn      = '%{ElelineLCN()}'
+  let l:Coc      = '%{ElelineCoc()}'
+  let l:func    = '%#ElelineFunction#%{ElelineFunction()}%*'
+  let l:prefix   = l:bufnr.l:paste
+  let l:common   = l:curfname.l:branch.l:status.l:error.l:warning.l:tags.l:lcn.l:Coc.l:func
   if get(g:, 'eleline_slim', 0)
-    return l:prefix.'%<'.l:common
+    "return l:prefix.'%<'.l:common
   endif
-  let l:tot = s:def('ElelineTotalBuf')
-  let l:fsize = '%#ElelineFsize#%{ElelineFsize(@%)}%*'
-  let l:m_r_f = '%#Eleline7# %m%r%y %*'
-  let l:pos = '%#Eleline8# '.(s:font?"\ue0a1":'').'%l/%L:%c%V |'
-  let l:enc = ' %{&fenc != "" ? &fenc : &enc} | %{&bomb ? ",BOM " : ""}'
-  let l:ff = '%{&ff} %*'
-  let l:pct = '%#Eleline9# %P %*'
-  return l:prefix.l:tot.'%<'.l:fsize.l:common
-        \ .'%='.l:m_r_f.l:pos.l:enc.l:ff.l:pct
+  let l:tot      = s:def('ElelineTotalBuf')
+  let l:fsize    = '%#ElelineFsize# %{ElelineFsize(@%)} |'
+  let l:m_r_f    = '%#Eleline1#%m%r'
+  let l:pos      = '%#Eleline8#'.'%l:%c%V |'
+  let l:enc      = '%#Eleline2# %{&fenc != "" ? toupper(&fenc) : toupper(&enc)} %{&bomb ? ",| BOM " : ""}%#Eleline7#|'
+  let l:ff       = '%#Eleline7#| %{toupper(&ff)} '
+  let l:ft       = '%#Eleline7#| %{toupper(&filetype)} |'
+  let l:pct      = '%#Eleline9# %P %*'
+  let l:fp       = '/%#Eleline7#%{FilePath()} |%*'
+  let l:SumL     = "%#Eleline7#%L | "
+  let l:Date     = "%#Eleline7# %{ReturnLastModifyDate()} | %*"
+  let l:Space    = "%#Eleline3#%=▂▃▄▅▆▇▇杭州▇▇▆▅▄▃▂"
+  let l:Hex      = "%#Eleline7# %b:0X%B "
+  let l:CWD      = "%#Eleline9# %{toupper(getcwd())}"
+  let l:IM       = '%#Eleline9#%{ZFVimIME_IMEStatusline()}'
+
+  let l:CWD=toupper(expand('%:p:h'))
+  let l:CWD=GetShortPath(l:CWD)
+  if stridx(l:CWD,"SCP://")!=-1 
+      let l:Date = "%#Eleline2# 远程文件 %#Eleline7#|%* "
+  endif
+  let l:CWD=substitute(l:CWD,"SCP://.*@","%#Eleliney#IP:","")
+  if stridx(l:CWD,"Eleline9")<0
+      let l:CWD="%#Eleline9#".l:CWD
+  endif
+  "let l:CWD=substitute(l:CWD,"[\\/]","•","g")
+  let l:CWD=substitute(l:CWD,":•",":","g")
+
+  for i in range(1,5)
+    if len(l:CWD)>40 "太长-减少显示的层级目录
+      let l:CWD = substitute(l:CWD,'/[^/]*/','/','n')
+    else
+      break
+    endif
+  endfor
+   
+  if &buftype==?"TERMINAL" || &filetype==?"PEEKABOO"
+      return "%*"
+  endif
+  return l:tot.'%<'.l:CWD.l:fp.l:enc.l:m_r_f.l:ff.l:ft.l:fsize.l:Date.l:SumL.l:pos.l:Hex
+endfunction
+
+function! StatusLineSimple() abort
+  let l:fp  ='%#Eleline7#%{toupper(FilePath())} |%*'
+  let l:SumL="%#Eleline7# %L | "
+  return l:fp.l:SumL
 endfunction
 
 let s:colors = {
-            \   140 : '#af87d7', 149 : '#99cc66', 160 : '#d70000',
+            \   140 : '#FF0000', 149 : '#99cc66', 160 : '#d70000',
             \   171 : '#d75fd7', 178 : '#ffbb7d', 184 : '#ffe920',
             \   208 : '#ff8700', 232 : '#333300', 197 : '#cc0033',
             \   214 : '#ffff66', 124 : '#af3a03', 172 : '#b57614',
             \   32  : '#3a81c3', 89  : '#6c3163',
             \
             \   235 : '#262626', 236 : '#303030', 237 : '#3a3a3a',
-            \   238 : '#444444', 239 : '#4e4e4e', 240 : '#585858',
+            \   238 : '#444444', 239 : '#4e4e4e', 240 : '#0000FF',
             \   241 : '#606060', 242 : '#666666', 243 : '#767676',
             \   244 : '#808080', 245 : '#8a8a8a', 246 : '#949494',
             \   247 : '#9e9e9e', 248 : '#a8a8a8', 249 : '#b2b2b2',
@@ -312,6 +362,18 @@ if has('termguicolors') && &termguicolors
   let s:bg = 235
 endif
 
+function! SetSLBgFg()
+    if exists('g:BG') && g:BG==1
+        let s:colors[239]="#556B2F"
+        let s:colors[171]="#FFFF00"
+    else
+        let s:colors[239]="#006400"
+        let s:colors[171]="#FFFFFF"
+    endif
+endfunction
+
+call SetSLBgFg()
+
 function! s:hi(group, dark, light, ...) abort
   let [fg, bg] = &background ==# 'dark' ? a:dark : a:light
 
@@ -331,31 +393,35 @@ function! s:hi(group, dark, light, ...) abort
     let guibg = s:colors[bg]
   endif
   execute printf('hi %s ctermfg=%d guifg=%s ctermbg=%d guibg=%s',
-                \ a:group, fg, s:colors[fg], ctermbg, guibg)
+                \ a:group, fg, s:colors[fg], ctermbg, s:colors[bg])
   if a:0 == 1
     execute printf('hi %s cterm=%s gui=%s', a:group, a:1, a:1)
   endif
 endfunction
 
 function! s:hi_statusline() abort
-  call s:hi('ElelineBufnrWinnr' , [232 , 178]    , [89 , '']  )
-  call s:hi('ElelineTotalBuf'   , [178 , s:bg+8] , [240 , ''] )
-  call s:hi('ElelinePaste'      , [232 , 178]    , [232 , 178]    , 'bold')
-  call s:hi('ElelineFsize'      , [250 , s:bg+6] , [235 , ''] )
-  call s:hi('ElelineCurFname'   , [171 , s:bg+4] , [171 , '']     , 'bold' )
-  call s:hi('ElelineGitBranch'  , [184 , s:bg+2] , [89  , '']     , 'bold' )
-  call s:hi('ElelineGitStatus'  , [208 , s:bg+2] , [89  , ''])
-  call s:hi('ElelineError'      , [197 , s:bg+2] , [197 , ''])
-  call s:hi('ElelineWarning'    , [214 , s:bg+2] , [214 , ''])
-  call s:hi('ElelineFunction'   , [149 , s:bg+2] , [149 , ''])
+  call s:hi('ElelineBufnrWinnr' ,[171,239],[171,239])
+  call s:hi('ElelineTotalBuf'   ,[171,239],[171,239])
+  call s:hi('ElelinePaste'      ,[171,239],[171,239],'BOLD')
+  call s:hi('ElelineFsize'      ,[171,239],[171,239])
+  call s:hi('ElelineCurFname'   ,[171,239],[171,239],'BOLD')
+  call s:hi('ElelineGitBranch'  ,[171,239],[171,239],'BOLD')
+  call s:hi('ElelineGitStatus'  ,[171,239],[171,239])
+  call s:hi('ElelineError'      ,[171,239],[171,239])
+  call s:hi('ElelineWarning'    ,[171,239],[171,239])
+  call s:hi('ElelineFunction'   ,[171,239],[171,239])
+  call s:hi('Eleline7'          ,[171,239],[171,239])
+  call s:hi('Eleline8'          ,[171,239],[171,239])
+  call s:hi('Eleline9'          ,[214,239],[214,239])
+  call s:hi('Eleline1'          ,[140,239],[140,239])
+  call s:hi('Eleline2'          ,[140,239],[140,239])
+  call s:hi('Eleline3'          ,[171,140],[171,140])
+  call s:hi('Eleline4'          ,[140,239],[171,140])
+endfunction
 
-  if &background ==# 'dark'
-    call s:hi('StatusLine' , [140 , s:bg+2], [140, ''] , 'none')
-  endif
-
-  call s:hi('Eleline7'      , [249 , s:bg+3], [237, ''] )
-  call s:hi('Eleline8'      , [250 , s:bg+4], [238, ''] )
-  call s:hi('Eleline9'      , [251 , s:bg+5], [239, ''] )
+function! MacVimSetSLC()
+  call SetSLBgFg()
+  call s:hi_statusline()
 endfunction
 
 function! s:InsertStatuslineColor(mode) abort
@@ -383,22 +449,28 @@ function! s:SetStatusLine(...) abort
   call s:hi_statusline()
 endfunction
 
+sil! call s:SetStatusLine()
+function! SetStatusLines()
+  return s:StatusLine()
+endfunction
 if exists('*timer_start')
-  call timer_start(100, function('s:SetStatusLine'))
+  "call timer_start(100, function('s:SetStatusLine'))
 else
-  call s:SetStatusLine()
+  "call s:SetStatusLine()
 endif
+
+setlocal statusline=%!SetStatusLines()
 
 augroup eleline
   autocmd!
-  autocmd User GitGutter,Startified,LanguageClientStarted call s:SetStatusLine()
-  " Change colors for insert mode
-  autocmd InsertLeave * call s:hi('ElelineBufnrWinnr', [232, 178], [89, ''])
-  autocmd InsertEnter,InsertChange * call s:InsertStatuslineColor(v:insertmode)
-  autocmd BufWinEnter,ShellCmdPost,BufWritePost * call s:SetStatusLine()
-  autocmd FileChangedShellPost,ColorScheme * call s:SetStatusLine()
-  autocmd FileReadPre,ShellCmdPost,FileWritePost * call s:SetStatusLine()
-  autocmd FileType qf call s:qf()
+  "autocmd User GitGutter,Startified,LanguageClientStarted call s:SetStatusLine()
+  "Change colors for insert mode
+  "autocmd InsertLeave * call s:hi('ElelineBufnrWinnr', [232, 178], [89, ''])
+  "autocmd InsertEnter,InsertChange * call s:InsertStatuslineColor(v:insertmode)
+  "autocmd BufWinEnter,ShellCmdPost,BufWritePost * call s:SetStatusLine()
+  "autocmd FileChangedShellPost,ColorScheme * call s:SetStatusLine()
+  "autocmd FileReadPre,ShellCmdPost,FileWritePost * call s:SetStatusLine()
+  "autocmd FileType qf call s:qf()
 augroup END
 
 let &cpoptions = s:save_cpo

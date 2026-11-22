@@ -353,4 +353,24 @@ else
     call leaderf#colorscheme#popup#link_no_reverse("Lf_hl_gitDiffText", "DiffText")
     highlight def link Lf_hl_gitInlineBlame Comment
     call leaderf#colorscheme#popup#link_two("Lf_hl_gitOpenFile", "NONE", "Type", 1)
+    """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    highlight  Lf_hl_popup_window       GUIFG='BLACK'   GUIBG='#D2ECC5'
+    highlight  Lf_hl_match              GUIFG='YELLOW'  GUIBG='RED'
+    highlight  Lf_hl_popup_inputText    GUIFg='#FFFFFF' GUIBG='BLACK'
+    highlight  Lf_hl_cursorline         GUIFG='BLUE'    GUIBG='#76EE60'
+    highlight  Lf_hl_Popup_BORDER       GUIFG=BG        GUIBG='#006400'
+    highlight  Lf_hl_popup_total        GUIFG='WHITE'   GUIBG='#006400'
+    highlight  Lf_hl_popup_lineInfo     GUIFG='YELLOW'  GUIBG='RED'
+    highlight  Lf_hl_popup_blank        GUIFG='WHITE'   GUIBG='#006400'
+    highlight  Lf_hl_popup_cwd          GUIFG='WHITE'   GUIBG='#006400'
+    highlight  Lf_hl_popup_category     GUIFG='WHITE'   GUIBG='#006400'
+    highlight  Lf_hl_popup_inputMode    GUIFG='WHITE'   GUIBG='#006400'
+    highlight  Lf_hl_popup_normalMode   GUIFG='WHITE'   GUIBG='#006400'
+    highlight  Lf_hl_rgHighlight        GUIFG='BLACK'   GUIBG='#76EE00'
+    highlight  Lf_hl_popup_fullPathMode GUIFG='WHITE'   GUIBG='#006400'
+    highlight  Lf_hl_popup_nameOnlyMode GUIFG='WHITE'   GUIBG='#006400'
+    highlight  Lf_hl_popup_fuzzyMode    GUIFG='WHITE'   GUIBG='#006400'
+    highlight  Lf_hl_popup_regexMode    GUIFG='WHITE'   GUIBG='#006400' 
+    highlight  Lf_hl_bufIndicators      GUIBG=NONE      GUIFG=NONE
+    """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 endif

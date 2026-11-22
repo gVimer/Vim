@@ -1,6 +1,9 @@
 scriptencoding utf-8
 let s:is_vim = !has('nvim')
 let s:prefix = '[List Preview]'
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+let s:prefix = '【预览】'
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 let s:sign_group = 'CocList'
 " filetype detect could be slow.
 let s:filetype_map = {
@@ -66,6 +69,9 @@ function! coc#list#create(position, height, name, numberSelect)
     call s:save_views(-1)
     let height = max([1, a:height])
     let cmd = 'silent keepalt '.(a:position ==# 'top' ? '' : 'botright').height.'sp'
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    let cmd = 'silent keepalt rightbelow'.height.'sp'
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     call coc#ui#safe_open(cmd, 'list:///'.a:name)
     call s:set_height(height)
     call s:restore_views()
@@ -100,6 +106,9 @@ function! coc#list#setup(source)
   setl norelativenumber bufhidden=wipe nocursorline winfixheight
   setl tabstop=1 nolist nocursorcolumn undolevels=-1
   setl signcolumn=auto
+""""""""""""""""""""""""""""""""""""""""""""""""""""""
+  setl signcolumn=no
+""""""""""""""""""""""""""""""""""""""""""""""""""""""
   setl foldcolumn=0
   if exists('&cursorlineopt')
     setl cursorlineopt=both
@@ -358,6 +367,9 @@ function! s:preview_highlights(winid, bufnr, config, float) abort
   if newname !=# bufname(a:bufnr)
     if s:is_vim
       call win_execute(a:winid, 'noa file '.fnameescape(newname), 'silent!')
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+      call win_execute(a:winid, 'setlocal statusline=%*', 'silent!')
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     else
       silent! noa call nvim_buf_set_name(a:bufnr, newname)
     endif

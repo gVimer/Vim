@@ -246,7 +246,9 @@ function! s:overwin.choose_prompt(hint_dict) abort
     call hinter.before()
     call hinter.show_hint()
     redraw
-    echo 'Target key: '
+    echohl LineNR
+    echo "▇▇▇▇▇▇▇▇▇请选择所在行字母:"
+    echohl None
     let c = s:Input.getchar()
     if self.config.use_upper
       let c = toupper(c)

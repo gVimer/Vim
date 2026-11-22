@@ -91,7 +91,7 @@ function! s:open(mode)
   execute get(g:, 'peekaboo_window', s:default_window)
   let s:buf_peekaboo = bufnr('')
   setlocal nonumber buftype=nofile bufhidden=wipe nobuflisted noswapfile nowrap
-  \ modifiable statusline=>\ Registers nocursorline nofoldenable
+  "\ modifiable statusline=>\ Registers nocursorline nofoldenable
   if exists('&relativenumber')
     setlocal norelativenumber
   endif
@@ -104,9 +104,9 @@ function! s:open(mode)
 
   let s:regs = {}
   call s:append_group('Special', get(g:, 'peekaboo_special', ['"', '*', '+', '-']))
-  call s:append_group('Read-only', a:mode ==# s:REPLAY ? ['.', ':'] : get(g:, 'peekaboo_readonly', ['.', '%', '#', '/', ':']))
-  call s:append_group('Numbered', map(range(0, 9), 'string(v:val)'))
-  call s:append_group('Named', map(range(97, 97 + 25), 'nr2char(v:val)'))
+  call s:append_group('ReadOnly', a:mode ==# s:REPLAY ? ['.', ':'] : get(g:, 'peekaboo_readonly', ['.', '%', '#', '/', ':']))
+  call s:append_group('Num', map(range(0, 9), 'string(v:val)'))
+  call s:append_group('Name', map(range(97, 97 + 25), 'nr2char(v:val)'))
   normal! "_dd
 endfunction
 

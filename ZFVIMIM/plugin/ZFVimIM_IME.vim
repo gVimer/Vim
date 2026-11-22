@@ -61,6 +61,8 @@ function! ZFVimIME_initFlag()
 endfunction
 
 " ============================================================
+nnoremap <expr><silent> <C-_> ZFVimIME_keymap_toggle_n()
+inoremap <expr><silent> <C-_> ZFVimIME_keymap_toggle_i()
 if get(g:, 'ZFVimIM_keymap', 1)
     nnoremap <expr><silent> ;; ZFVimIME_keymap_toggle_n()
     inoremap <expr><silent> ;; ZFVimIME_keymap_toggle_i()

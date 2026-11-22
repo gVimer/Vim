@@ -181,7 +181,9 @@ export default class CodeActions {
   public async doQuickfix(): Promise<void> {
     let actions = await this.getCurrentCodeActions('currline', [CodeActionKind.QuickFix])
     if (!actions || actions.length == 0) {
-      void window.showWarningMessage(`No quickfix action available`)
+////////////////////////////////////////////////////////////
+      //void window.showWarningMessage(`No quickfix action available`)
+////////////////////////////////////////////////////////////
       return
     }
     await this.applyCodeAction(actions[0])

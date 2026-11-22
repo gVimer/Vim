@@ -197,17 +197,17 @@ class LfCli(object):
 
     def _buildPopupPrompt(self):
         self._instance.mimicCursor()
-
+        ####################################################
         if self._is_fuzzy:
             if self._is_full_path:
-                prompt = ' >F> {}'.format(self._additional_prompt_string)
+                prompt = 'F>>{}'.format(self._additional_prompt_string)
             else:
-                prompt = ' >>> {}'.format(self._additional_prompt_string)
+                prompt = 'N>>{}'.format(self._additional_prompt_string)
         elif self._is_live:
-            prompt = ' >>> {}'.format(self._additional_prompt_string)
+            prompt = 'L>>{}'.format(self._additional_prompt_string)
         else:
-            prompt = ' R>> {}'.format(self._additional_prompt_string)
-
+            prompt = 'R>>{}'.format(self._additional_prompt_string)
+        ####################################################
         pattern = ''.join(self._cmdline)
         input_window = self._instance.getPopupInstance().input_win
         content_winid = self._instance.getPopupInstance().content_win.id
@@ -225,6 +225,11 @@ class LfCli(object):
         part1 = prompt + pattern
         part2 = "{}/{}".format(line_num, result_count)
         part3 = total
+		####################################################
+        part2 = "{}/{}/{}".format(line_num, result_count,total)
+        PreviewPopupWidth = int(lfEval("get(g:, 'Lf_PreviewPopupWidth', 0)"))
+        part3 = " "*(PreviewPopupWidth-40)
+		####################################################
         sep = lfEval("g:Lf_StlSeparator.right")
         if lfEval("g:Lf_{}_IsRunning".format(self._instance._category)) == '1':
             spin = "{}".format(self._spin_symbols[self._running_status])
@@ -356,13 +361,13 @@ class LfCli(object):
 
         if self._is_fuzzy:
             if self._is_full_path:
-                lfCmd("echohl Constant | echon '>F> {}' | echohl NONE".format(self._additional_prompt_string))
+                lfCmd("echohl Constant | echon '▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇F:{}' | echohl NONE".format(self._additional_prompt_string))
             else:
-                lfCmd("echohl Constant | echon '>>> {}' | echohl NONE".format(self._additional_prompt_string))
+                lfCmd("echohl Constant | echon '▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇N:{}' | echohl NONE".format(self._additional_prompt_string))
         elif self._is_live:
             lfCmd("echohl Constant | echon '>>> {}' | echohl NONE".format(self._additional_prompt_string))
         else:
-            lfCmd("echohl Constant | echon 'R>> {}' | echohl NONE".format(self._additional_prompt_string))
+            lfCmd("echohl Constant | echon '▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇R:{}' | echohl NONE".format(self._additional_prompt_string))
 
         lfCmd("echohl Normal | echon '%s' | echohl NONE" %
               escQuote(''.join(self._cmdline[:self._cursor_pos])))

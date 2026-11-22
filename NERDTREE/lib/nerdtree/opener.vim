@@ -215,11 +215,18 @@ function! s:Opener.open(target)
     call self._openFile()
 endfunction
 
+function OneMatch()
+    sil! exec printf("1%s Folded /\\<%s\\>$/",L("MATCH"),substitute(trim(getline(".")),"/",".","g"))
+endfunction
+
 " FUNCTION: Opener._openFile() {{{1
 function! s:Opener._openFile()
     if !self._stay && self._keepopen && get(b:, 'NERDTreeZoomed', 0)
         call b:NERDTree.ui.toggleZoom()
     endif
+    """"""""""""""""""""""""""""""""""""
+    call OneMatch()
+    """"""""""""""""""""""""""""""""""""
 
     if self._reuseWindow()
         return

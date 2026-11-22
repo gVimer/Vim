@@ -95,6 +95,9 @@ class BufferExplorer(Explorer):
                             icon, basename, ' ' * space_num,
                             dirname if dirname else '.' + os.sep,
                             width=bufnr_len)
+                ###############################################################################
+                buf_name = '{:0>3d} {}{} "{}"'.format(nr,basename,' ' * space_num,dirname if dirname else '.' + os.sep)
+                ###############################################################################
                 bufnames.append(buf_name)
                 del buffers[nr]
             elif lfEval("bufnr(%d)" % nr) == '-1':

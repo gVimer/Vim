@@ -209,6 +209,32 @@ function! s:open_popup(bufnr, config) abort
         \ 'highlight': 'Floaterm',
         \ 'zindex': len(floaterm#buflist#gather()) + 1
         \ }
+ "####################################################
+  let options["title"          ] = ""
+  let options["posinvert"      ] = 0
+  let options["scrollbar"      ] = 0
+  let options["drag"           ] = 1
+  let options["resize"         ] = 1
+  let options["pos"            ] = "botleft"
+  let options["col"            ] = g:NERDTreeWinSize+1+1
+  let options["col"            ] = win_screenpos(0)[1]
+  let options["maxwidth"       ] = g:Lf_PreviewPopupWidth+1
+  let options["maxwidth"       ] = winwidth(0)  
+  let options["minwidth"       ] = options["maxwidth"]
+  let options["maxheight"      ] = g:FlTerminalHeight
+  let options["minheight"      ] = options["maxwidth"]
+  if g:FlTerminalHeight>=&lines-1
+    let options["border"] = [0,0,0,0]
+    "命令行+状态栏=2-正文开始的位置-若有边框则在其下
+    let options["line"  ] = &lines-2
+  else
+    let options["border"] = [1,0,0,0]
+    let options["line"  ] = &lines-2
+  endif
+  let options["padding"        ] = [0,0,0,0]
+  let options["borderchars"    ] = [' ']
+  let options['borderhighlight'] = ['Pmenu']
+  "####################################################
   let winid = popup_create(a:bufnr, options)
   call s:init_win(winid, v:false)
   call floaterm#config#set(a:bufnr, 'winid', winid)

@@ -36,8 +36,8 @@ function! s:YoudaoCursorTranslate()
 endfunction
 
 function! s:YoudaoEnterTranslate()
-    let word = input("Please enter the word: ")
-    redraw!
+    echohl LineNR
+    let word=input("▇▇▇▇▇请输入需要翻译的单词:")
     call s:translator.start(word)
 endfunction
 

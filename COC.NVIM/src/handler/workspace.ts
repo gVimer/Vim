@@ -294,7 +294,7 @@ export default class WorkspaceHandler {
     // Name the buffer so `:ls!` shows a meaningful entry instead of
     // `[scratch]` (#5061)
     let bufnr = await this.nvim.call('bufadd', ['[Coc Info]']) as number
-    await this.nvim.command(`vertical sbuffer ${bufnr} | setl buftype=nofile bufhidden=wipe nobuflisted`)
+    await this.nvim.command(`100vnew sbuffer ${bufnr} | setl buftype=nofile bufhidden=wipe nobuflisted`)
     let buf = await this.nvim.buffer
     await buf.setLines(lines, { start: 0, end: -1, strictIndexing: false })
   }

@@ -102,8 +102,8 @@ endfunction
 " Manually input a regular expression.
 function! mark#MarkRegex( groupNum, regexpPreset )
 	call inputsave()
-		echohl Question
-			let l:regexp = input('Input pattern to mark: ', a:regexpPreset)
+        echohl LineNR
+		let l:regexp = input('▇▇▇▇▇▇▇▇▇▇▇▇▇输入高亮模式:', a:regexpPreset)
 		echohl None
 	call inputrestore()
 	if empty(l:regexp)
@@ -312,9 +312,9 @@ function! mark#ClearAll()
 	call mark#UpdateScope(l:indices, '')
 
 	if len(indices) > 0
-		echo 'Cleared all' len(indices) 'marks'
+		echo 'CleareAll'len(indices)'Marks'
 	else
-		echo 'All marks cleared'
+		echo 'AllMarksClear'
 	endif
 endfunction
 function! s:SetMark( index, regexp, ... )
@@ -342,7 +342,7 @@ function! s:EnrichSearchType( searchType )
 	return (l:markIndex >= 0 ? a:searchType . (l:markIndex + 1) .  s:RenderName(l:markIndex + 1) : a:searchType)
 endfunction
 function! s:RenderMark( groupNum )
-	return 'mark-' . a:groupNum . s:RenderName(a:groupNum)
+	return 'Mark-' . a:groupNum . s:RenderName(a:groupNum)
 endfunction
 function! s:EchoMark( groupNum, regexp )
 	call s:EchoSearchPattern(s:RenderMark(a:groupNum), a:regexp, 0)
@@ -354,7 +354,7 @@ function! s:EchoMarkCleared( groupNum )
 	echon ' cleared'
 endfunction
 function! s:EchoMarksDisabled()
-	echo 'All marks disabled'
+	echo 'AllMarksDis'
 endfunction
 
 function! s:SplitIntoAlternatives( pattern )

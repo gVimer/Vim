@@ -26,9 +26,14 @@ class QfLocListExplorer(Explorer):
         else:
             self._list_type = "QuickFix"
             cmd = 'getqflist()'
-        return lfEval(
-            """map({}, 'bufname(v:val.bufnr) . ":" . v:val.lnum . ":" . v:val.col . ":" . v:val.text')""".format(cmd)
-        )
+        ###################################################################################
+        lines=lfEval("""map({}, 'bufname(v:val.bufnr) . ":" . v:val.lnum . ":" . v:val.col . ":" . v:val.text')""".format(cmd))
+        lines=[lfRelpath(line) for line in lines]
+        return lines
+		###################################################################################
+        #return lfEval(
+        #    """map({}, 'bufname(v:val.bufnr) . ":" . v:val.lnum . ":" . v:val.col . ":" . v:val.text')""".format(cmd)
+        #)
 
     def getStlCategory(self):
         return self._list_type

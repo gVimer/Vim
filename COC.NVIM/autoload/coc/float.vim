@@ -251,6 +251,21 @@ function! coc#float#create_float_win(winid, bufnr, config) abort
     if type(get(a:config, 'filter', v:null)) == v:t_func
       let opts['filter'] = get(a:config, 'filter', v:null)
     endif
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    "let opts["title"      ]=""
+    "let opts["pos"        ]="topleft"
+    "let opts["line"       ]=1*1000
+    "let opts["col"        ]=1*1000
+    "let opts["minwidth"   ]=31
+    "let opts["maxwidth"   ]=opts["minwidth"]
+    "let opts["minheight"  ]=1
+    "let opts["maxheight"  ]=0
+    "let opts["border"     ]=[0,0,0,0]
+    "let opts["padding"    ]=[0,0,0,0]
+    "let opts["borderchars"]=[' ']
+    "let opts["posinvert"  ]=0
+    "let opts["fixed"      ]=1
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     noa let winid = popup_create(bufnr, opts)
     let initialized = 0
     try

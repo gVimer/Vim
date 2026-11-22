@@ -14,6 +14,10 @@ import { unidecode } from '../util/node'
 import { isEmpty, toObject } from '../util/object'
 import { byteIndex, byteSlice, characterIndex, getUnicodeClass, isLowSurrogate, toText } from '../util/string'
 import { CompleteDoneItem, CompleteItem, CompleteOption, DurationCompleteItem, EditRange, ExtendedCompleteItem, InsertMode, ISource, ItemDefaults } from './types'
+////////////////////////////////////////////////////////////
+import {createLogger} from '../logger'
+const logger = createLogger('completion-complete')
+////////////////////////////////////////////////////////////
 
 type MruItem = Pick<Readonly<DurationCompleteItem>, 'kind' | 'filterText' | 'source'>
 type PartialOption = Pick<CompleteOption, 'col' | 'colnr' | 'line' | 'position'>
@@ -379,6 +383,23 @@ export function getReplaceRange(item: CompletionItem, defaultRange: EditRange | 
   if (range && Is.number(character) && range.start.character > character) range.start.character = character
   return range
 }
+////////////////////////////////////////////////////////////
+let ShortCutMap:Map<string,string>=new Map([
+    ["A"    ,"ARO"],
+    ["B"    ,"BUF"],
+    ["D"    ,"DIC"],
+    ["F"    ,"FIL"],
+    ["T"    ,"TAG"],
+    ["TN"   ,"TAB"],
+    ["LS"   ,"LSP"],
+    ["JD"   ,"JDE"],
+    ["10K"  ,"WOR"],
+    ["TSC"  ,"TSC"],
+    ["CALC" ,"CAL"],
+    ["YANK" ,"YAN"],
+    ["CMAKE","CMK"],
+])
+////////////////////////////////////////////////////////////
 
 export class Converter {
   // cache the sliced text
@@ -459,6 +480,18 @@ export class Converter {
     let filterText = item.filterText ?? word
     filterText = asciiMatch ? unidecode(filterText) : filterText
     const delta = this.getDelta(filterText, character)
+
+////////////////////////////////////////////////////////////
+    let Sc:string=ShortCutMap.get(option.source.shortcut) || ""
+    if(!item.kind){
+        if(Sc=="ARO")
+            item.kind="🌍"
+        else if(Sc=="BUF")
+            item.kind="🍓"
+        else if(Sc=="WOR")
+            item.kind="💛"
+    }
+////////////////////////////////////////////////////////////
     return {
       word: this.fixFollow(word, item.isSnippet, range.end.character),
       abbr: item.abbr ?? word,
@@ -482,7 +515,10 @@ export class Converter {
         return option.source.priority ?? 99
       },
       get shortcut() {
-        return toText(option.source.shortcut)
+////////////////////////////////////////////////////////////
+        //return toText(option.source.shortcut)
+        return Sc
+////////////////////////////////////////////////////////////
       }
     }
   }
@@ -517,7 +553,10 @@ export class Converter {
         return option.priority
       },
       get shortcut() {
-        return toText(option.source.shortcut)
+////////////////////////////////////////////////////////////
+        //return toText(option.source.shortcut)
+        return ShortCutMap.get(option.source.shortcut) || ""
+////////////////////////////////////////////////////////////
       },
       dup: data.dup !== 0
     }

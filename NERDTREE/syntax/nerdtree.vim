@@ -22,7 +22,9 @@ syn match NERDTreeLinkDir #.*/ ->#me=e-3 containedin=NERDTreeDir
 "highlighting to conceal the delimiter around the file/dir name
 if has('conceal')
     exec 'syn match NERDTreeNodeDelimiters #\%d' . char2nr(g:NERDTreeNodeDelimiter) . '# conceal containedin=ALL'
-    setlocal conceallevel=2 concealcursor=nvic
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    setlocal conceallevel=3 concealcursor=nvic
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 else
     exec 'syn match NERDTreeNodeDelimiters #\%d' . char2nr(g:NERDTreeNodeDelimiter) . '# containedin=ALL'
     hi! link NERDTreeNodeDelimiters Ignore
@@ -56,9 +58,18 @@ syn match NERDTreeBookmarkName # {.*}#hs=s+2,he=e-1
 
 "highlighting for the bookmarks table
 syn match NERDTreeBookmarksLeader #^>#
-syn match NERDTreeBookmarksHeader #^>-\+Bookmarks-\+$# contains=NERDTreeBookmarksLeader
-syn match NERDTreeBookmarkName #^>.\{-} #he=e-1 contains=NERDTreeBookmarksLeader
-syn match NERDTreeBookmark #^>.*$# contains=NERDTreeBookmarksLeader,NERDTreeBookmarkName,NERDTreeBookmarksHeader
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+syn match NERDTreeBookmarksHeader #^*-\+Bookmarks-\+$# contains=NERDTreeBookmarksLeader
+syn match NERDTreeBookmarkName #^*.\{-} #he=e-1 contains=NERDTreeBookmarksLeader
+syn match NERDTreeBookmark #^*.*$# contains=NERDTreeBookmarksLeader,NERDTreeBookmarkName,NERDTreeBookmarksHeader
+
+if has("conceal")
+    syntax clear NERDTreeOpenable
+    syntax clear NERDTreeClosable
+    let s:dirArrows = escape(g:NERDTreeDirArrowCollapsible, '~]\-').escape(g:NERDTreeDirArrowExpandable, '~]\-')
+    exec 'syntax match CompressSpaces #['.s:dirArrows.' ]\zs \ze.*' . g:NERDTreeNodeDelimiter . '# containedin=ALL conceal'
+endif
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 hi def link NERDTreePart Special
 hi def link NERDTreePartFile Type
@@ -95,3 +106,14 @@ hi def link NERDTreeFlags Number
 hi def link NERDTreeCurrentNode Search
 
 hi NERDTreeFile ctermbg=NONE guibg=NONE
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+syntax match NERDTreeTSFile /^\s\+.*\.[Tt][Ss]$/
+highlight NERDTreeTSFile ctermfg=3 guifg='#8B008B'
+
+syntax match NERDTreeJSFile /^\s\+.*\.[Jj][Ss]$/
+highlight NERDTreeJSFile ctermfg=3 guifg='#FF00FF'
+
+syntax match NERDTreePyFile /^\s\+.*\.[Pp][Yy]$/
+highlight NERDTreePyFile ctermfg=4 guifg='#006400'
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""

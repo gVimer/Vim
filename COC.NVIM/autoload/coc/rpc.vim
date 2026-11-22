@@ -157,7 +157,10 @@ function! coc#rpc#restart()
       call coc#client#restart(s:name)
       call s:check_vim_enter()
     endif
-    echohl MoreMsg | echom 'starting coc.nvim service' | echohl None
+    "echohl MoreMsg | echom 'starting coc.nvim service' | echohl None
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    echohl MoreMsg | echo '▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇:开启Coc.nVim'
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
   endif
 endfunction
 

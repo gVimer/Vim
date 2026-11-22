@@ -73,14 +73,21 @@ export default class Prompt {
     let cmds = ['echo ""']
     if (this.mode == 'insert') {
       if (interactive) {
-        cmds.push(`echohl MoreMsg | echon 'INTERACTIVE ' | echohl None`)
+        ///////////////////////////////////////////////////////////////////////
+        cmds.push(`echohl MoreMsg | echon '▇▇▇▇▇▇▇请输入要翻译的单词:'| echohl None`)
+        ///////////////////////////////////////////////////////////////////////
       } else if (_matcher) {
-        cmds.push(`echohl MoreMsg | echon '${_matcher.toUpperCase()} ' | echohl None`)
+        ///////////////////////////////////////////////////////////////////////
+        cmds.push(`echohl MoreMsg | echon '▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇:${_matcher.toUpperCase()}' | echohl None`)
+        ///////////////////////////////////////////////////////////////////////
       }
       cmds.push(`echohl Special | echon '${indicator} ' | echohl None`)
       if (cursorIndex == input.length) {
         cmds.push(`echon '${input.replace(/'/g, "''")}'`)
-        cmds.push(`echohl Cursor | echon ' ' | echohl None`)
+        ///////////////////////////////////////////////////////////////////////
+        cmds.push(`echohl Cursor | echon '•' | echohl None`)
+        this.nvim.command('highlight Cursor GUI=BOLD GUIBG=NONE GUIFG=NONE',true)
+        ///////////////////////////////////////////////////////////////////////
       } else {
         let pre = input.slice(0, cursorIndex)
         if (pre) cmds.push(`echon '${pre.replace(/'/g, "''")}'`)

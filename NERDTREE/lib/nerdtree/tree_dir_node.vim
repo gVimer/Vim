@@ -429,18 +429,40 @@ function! s:TreeDirNode._initChildren(silent)
     if !a:silent && len(files) > g:NERDTreeNotificationThreshold
         call nerdtree#echo('Please wait, caching a large dir ...')
     endif
-
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    let SuffNameDIC={} 
+    for i in g:NERDTreeIgnore
+        let SuffNameDIC[toupper(substitute(i,'\$','',''))]=1
+    endfor
     let invalidFilesFound = 0
-    let invalidFiles = []
+    let nCount=0
+    let l:paths = []
     for i in files
         try
-            let path = g:NERDTreePath.New(i)
-            call self.createChild(path, 0)
-            call g:NERDTreePathNotifier.NotifyListeners('init', path, self.getNerdtree(), {})
+            let l:p = g:NERDTreePath.New(i)
         catch /^NERDTree.\(InvalidArguments\|InvalidFiletype\)Error/
-            let invalidFilesFound += 1
-            let invalidFiles += [i]
+            continue
         endtry
+        if l:p.ignore(self.getNerdtree()) ==# 1
+            continue
+        endif
+        call add(l:paths, l:p)
+    endfor
+    call sort(l:paths, function('nerdtree#compareNodePaths'))
+    let files = map(l:paths, 'v:val.str()')
+    for i in files
+        let FileEXEName=toupper(strpart(i,strridx(i,".")))
+        if (isdirectory(i) || get(SuffNameDIC,FileEXEName,0)==0) && nCount-invalidFilesFound<=&lines-8
+            let nCount=nCount+1
+            try
+                let path = g:NERDTreePath.New(i)
+                call self.createChild(path, 0)
+                call g:NERDTreePathNotifier.NotifyListeners('init', path, self.getNerdtree(), {})
+            catch /^NERDTree.\(InvalidArguments\|InvalidFiletype\)Error/
+                let invalidFilesFound += 1
+            endtry
+        end
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
     endfor
 
     let g:NERDTreeOldSortOrder = g:NERDTreeSortOrder

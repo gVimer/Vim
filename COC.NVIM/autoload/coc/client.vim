@@ -92,6 +92,9 @@ function! s:on_stderr(name, msgs)
   let data = filter(copy(a:msgs), '!empty(v:val)')
   if empty(data) | return | endif
   let client = a:name ==# 'coc' ? '[coc.nvim]' : '['.a:name.']'
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+  let client=toupper(client)
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
   let data[0] = client.': '.data[0]
   if a:name ==# 'coc' && len(filter(copy(data), 'v:val =~# "SyntaxError: "'))
     call coc#client#check_version()
@@ -150,7 +153,9 @@ function! s:on_exit(name, code) abort
   if get(g:, 'coc_vim_leaving', 0) | return | endif
   call s:on_detach(a:name, a:code)
   if a:code != 0 && a:code != 143 && a:code != -1
-    echohl Error | echom 'client '.a:name. ' abnormal exit with: '.a:code | echohl None
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    "echohl Error | echom 'CLIENT '.a:name. ' ABNORMAL EXIT WITH: '.a:code | echohl None
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
   endif
 endfunction
 
@@ -323,7 +328,9 @@ function! coc#client#stop(name) abort
     endif
   endif
   call s:on_exit(a:name, 0)
-  echohl MoreMsg | echom 'client '.a:name.' stopped!' | echohl None
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+  "echohl MoreMsg | echom 'CLIENT '.toupper(a:name).' Stop!' | echohl None
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
   return 1
 endfunction
 

@@ -362,7 +362,11 @@ function! s:VimEnter() abort
   elseif get(g:, 'coc_start_at_startup', 1)
     call coc#rpc#start_server()
   endif
-  call s:Highlight()
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+  if has("Win32")
+      call s:Highlight()
+  endif
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 endfunction
 
 function! s:Enable(initialize) abort
@@ -511,7 +515,9 @@ function! s:StaticHighlight() abort
   hi default link CocPumDetail           Comment
   hi default link CocPumMenu             CocFloating
   hi default link CocPumShortcut         Comment
-  hi default link CocPumDeprecated       CocStrikeThrough
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+  "hi default link CocPumDeprecated       CocStrikeThrough 
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
   hi default CocVirtualText             ctermfg=12 guifg=#504945
   hi default link CocPumVirtualText        CocVirtualText
   hi default link CocInputBoxVirtualText   CocVirtualText
@@ -746,7 +752,15 @@ command! -nargs=? -complete=custom,coc#list#names CocLast         :call coc#rpc#
 command! -nargs=0 CocUpdate       :call coc#util#update_extensions(1)
 command! -nargs=0 -bar CocUpdateSync   :call coc#util#update_extensions()
 command! -nargs=* -bar -complete=custom,s:InstallOptions CocInstall   :call coc#util#install_extension([<f-args>])
-
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+highlight default link CocPumMenu       Pmenu
+highlight default link CocFloating      Pmenu
+highlight default link CocMenuSel       PmenuSel
+highlight default link CocFloatSbar     PmenuSbar
+highlight default link CocFloatThumb    PmenuThumb
+command! -nargs=0 Cc :call s:OpenConfig()
+command! -nargs=0 Cr :call coc#rpc#restart()
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 call s:Enable(1)
 
 if get(g:, 'coc_start_at_startup', 1) && !s:is_gvim
@@ -766,9 +780,15 @@ augroup END
 " Default key-mappings for completion
 if empty(mapcheck('<C-n>', 'i'))
   inoremap <silent><expr> <C-n> coc#pum#visible() ? coc#pum#next(1) : coc#inline#visible() ? coc#inline#next() : "\<C-n>"
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    inoremap <silent><expr> <C-j> coc#pum#visible() ? coc#pum#next(1) : "\<C-n>"
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 endif
 if empty(mapcheck('<C-p>', 'i'))
   inoremap <silent><expr> <C-p> coc#pum#visible() ? coc#pum#prev(1) : coc#inline#visible() ? coc#inline#prev() : "\<C-p>"
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+  inoremap <silent><expr> <C-k> coc#pum#visible() ? coc#pum#prev(1) : "\<C-p>"
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 endif
 if empty(mapcheck('<down>', 'i'))
   inoremap <silent><expr> <down> coc#pum#visible() ? coc#pum#next(0) : coc#inline#visible() ? coc#inline#next() :"\<down>"

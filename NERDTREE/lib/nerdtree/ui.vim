@@ -328,10 +328,14 @@ endfunction
 " FUNCTION: s:UI._renderBookmarks {{{1
 function! s:UI._renderBookmarks()
 
-    if !self.isMinimal()
-        call setline(line('.')+1, '>----------Bookmarks----------')
-        call cursor(line('.')+1, col('.'))
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    if g:NERDTreeMinimalUI == 1
+        call setline(line(".")+1, ">----------Bookmarks----------")
+        call setline(line(".")+1, "●●●●●●●●●●书签●●●●●●●●●●●")
+
+        call cursor(line(".")+1, col("."))
     endif
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
     if g:NERDTreeBookmarksSort ==# 1 || g:NERDTreeBookmarksSort ==# 2
         call g:NERDTreeBookmark.SortBookmarksList()
@@ -423,8 +427,10 @@ function! s:UI.render()
     endif
 
     " add the 'up a dir' line
-    if !self.isMinimal()
-        call setline(line('.')+1, s:UI.UpDirLine())
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    if g:NERDTreeMinimalUI
+        call setline(line('.'), s:UI.UpDirLine())
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
         call cursor(line('.')+1, col('.'))
     endif
 
@@ -552,7 +558,10 @@ endfunction
 
 " FUNCTION: s:UI.UpDirLine() {{{1
 function! s:UI.UpDirLine()
-    return '.. (up a dir)'
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    return '▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓'
+    "return repeat("▲",31)
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 endfunction
 
 " vim: set sw=4 sts=4 et fdm=marker:

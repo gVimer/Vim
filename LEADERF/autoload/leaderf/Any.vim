@@ -80,6 +80,8 @@ let g:Lf_Arguments = {
             \               {"name": ["--file"], "nargs": "+", "help": "read file list from the specified file."},
             \           ],
             \           {"name": ["--no-ignore"], "nargs": 0, "help": "don't respect ignore files (.gitignore, .ignore, etc.)."},
+            \           {"name": ["--auto-jump"], "nargs": "?", "metavar": "<TYPE>", "help": "Jump to the tag directly when there is only one match. <TYPE> can be 'h', 'v' or 't', which mean jump to a horizontally, vertically split window, or a new tabpage respectively. If <TYPE> is omitted, jump to a position in current window."},
+            \           {"name": ["--jump-tab" ], "nargs": "?", "metavar": "<TYPE>", "help": "Jump to the tag directly when there is only one match. <TYPE> can be 'h', 'v' or 't', which mean jump to a horizontally, vertically split window, or a new tabpage respectively. If <TYPE> is omitted, jump to a position in current window."},
             \   ],
             \ "buffer":[
             \           {"name": ["--all"], "nargs": 0, "help": "search all buffers in addition to the listed buffers"},

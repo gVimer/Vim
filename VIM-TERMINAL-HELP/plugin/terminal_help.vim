@@ -144,7 +144,9 @@ function! TerminalOpen(...)
 					if has('nvim')
 						startinsert
 					else
-						exec "normal! i"
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+						sil! exec "normal! i"
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 					endif
 				endif
 			else
@@ -208,7 +210,10 @@ function! TerminalOpen(...)
 		endif
 		if get(g:, 'terminal_auto_insert', 0) != 0
 			if has('nvim') == 0
-				autocmd WinEnter <buffer> exec "normal! i"
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+				autocmd WinEnter <buffer> exec "sil! normal! i"
+				autocmd WinLeave <buffer> exec "sil! normal! i"
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 			else
 				autocmd WinEnter <buffer> startinsert
 			endif
@@ -221,6 +226,9 @@ function! TerminalOpen(...)
 	if get(g:, 'terminal_fixheight', 0)
 		setlocal winfixheight
 	endif
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    exec "resize ".g:terminal_height
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 endfunc
 
 
@@ -245,7 +253,9 @@ function! TerminalClose()
 	call win_gotoid(sid)
 	if wid != winnr()
 		let uid = win_getid()
-		exec "normal! ". wid . "\<c-w>w"
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+      sil! exec "normal! ". wid . "\<c-w>w"
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 		close
 		call win_gotoid(uid)
 	else

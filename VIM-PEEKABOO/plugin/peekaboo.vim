@@ -33,7 +33,7 @@ function! peekaboo#on()
   let ins_prefix = get(g:, 'peekaboo_ins_prefix', '')
   execute 'nmap <buffer> <expr> '.prefix.    '"     peekaboo#peek(v:count1, ''"'',  0)'
   execute 'xmap <buffer> <expr> '.prefix.    '"     peekaboo#peek(v:count1, ''"'',  1)'
-  execute 'nmap <buffer> <expr> '.prefix.    '@     peekaboo#peek(v:count1, ''@'', 0)'
+  "execute 'nmap <buffer> <expr> '.prefix.    '@     peekaboo#peek(v:count1, ''@'', 0)'
   execute 'imap <buffer> <expr> '.ins_prefix.'<c-r> peekaboo#peek(1, "\<c-r>",  0)'
   let b:peekaboo_on = 1
   return ''

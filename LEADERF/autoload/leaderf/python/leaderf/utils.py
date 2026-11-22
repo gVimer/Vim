@@ -170,7 +170,9 @@ def lfPrintError(error):
         raise Exception(error)
     else:
         error = lfEncode(str(repr(error)))
-        lfCmd("echohl Error | redraw | echo '%s' | echohl None" % escQuote(error))
+		###########################################################################
+        lfCmd("echohl Error | redraw | echom '%s' | echohl None" % escQuote(error))
+		###########################################################################
 
 def lfPrintTraceback(msg=''):
     error = traceback.format_exc()
@@ -179,6 +181,9 @@ def lfPrintTraceback(msg=''):
         error = msg + "\n" + error
     lfCmd("echohl WarningMsg | redraw")
     lfCmd("echom '%s' | echohl None" % escQuote(error))
+	###################################################
+    lfPrintError(__import__("traceback").print_stack())
+	###################################################
 
 def lfActualLineCount(buffer, start, end, col_width):
     num = 0

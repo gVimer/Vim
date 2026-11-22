@@ -1107,7 +1107,7 @@ function! s:PromptUser(groups) "{{{
         redraw "}}}
 
         " Get target character {{{
-        call s:Prompt('Target key')
+        call s:Prompt('▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇输入')
         let char = s:GetChar()
         "}}}
 
@@ -1158,12 +1158,12 @@ function! s:PromptUser(groups) "{{{
 
     " -- Check if we have an input char ------ {{{
     if empty(char)
-        call s:Throw('Cancelled')
+        call s:Throw('取消')
     endif
     " }}}
     " -- Check if the input char is valid ---- {{{
     if ! has_key(a:groups, char)
-        call s:Throw('Invalid target')
+        call s:Throw('无效的选择')
     endif
     " }}}
 

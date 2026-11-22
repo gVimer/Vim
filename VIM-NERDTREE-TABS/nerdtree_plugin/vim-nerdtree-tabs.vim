@@ -336,6 +336,7 @@ endfun
 " buffer that's left is the NERDTree buffer
 fun! s:CloseIfOnlyNerdTreeLeft()
   if exists("t:NERDTreeBufName") && bufwinnr(t:NERDTreeBufName) != -1 && winnr("$") == 1
+    FloatermKill!
     q
   endif
 endfun

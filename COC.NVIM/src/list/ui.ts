@@ -388,8 +388,10 @@ export default class ListUI {
     if (!append) {
       nvim.call('coc#compat#clear_matches', [window.id], true)
       if (!lines.length) {
-        lines = ['No results, press ? on normal mode to get help.']
-        nvim.call('coc#compat#matchaddpos', ['Comment', [[1]], 99, window.id], true)
+        ///////////////////////////////////////////////////////////////////////
+        //lines = ['No results, press ? on normal mode to get help.']
+        //nvim.call('coc#compat#matchaddpos', ['Comment', [[1]], 99, window.id], true)
+        ///////////////////////////////////////////////////////////////////////
       }
     }
     buffer.setOption('modifiable', true, true)

@@ -308,6 +308,15 @@ class LfInstance(object):
             stl += "%#Lf_hl_stlLineInfo# %l/%{{g:Lf_{0}_StlResultsCount}} "
         stl += "%#Lf_hl_{0}_stlSeparator5#%{{g:Lf_StlSeparator.right}}"
         stl += "%#Lf_hl_stlTotal# Total: %{{g:Lf_{0}_StlTotal}} "
+        ####################################################
+        stl  = "%#Lf_hl_stlCwd# %<%{{g:Lf_{0}_StlCwd}} "
+        stl += "%#Lf_hl_stlCategory# %{{g:Lf_{0}_StlCategory}} "
+        if self._reverse_order:
+            stl += "%#Lf_hl_stlTotal# %{{g:Lf_{0}_StlLineNumber}}/%{{g:Lf_{0}_StlResultsCount}}/%{{g:Lf_{0}_StlTotal}} "
+        else:
+            stl += "%#Lf_hl_stlTotal# %l/%{{g:Lf_{0}_StlResultsCount}}/%{{g:Lf_{0}_StlTotal}} "
+        stl += "%#ElelineBufnrWinnr#"
+        ####################################################
         self._stl = stl.format(self._category)
 
     def _setAttributes(self):
@@ -767,7 +776,20 @@ class LfInstance(object):
                 options["minwidth"] -= 2
                 options["line"] += 1
                 options["borderhighlight"] = ["Lf_hl_popupBorder"]
-
+            ######################弹出窗口######################
+            options["maxwidth"       ] = int(lfEval("get(g:, 'Lf_PreviewPopupWidth', 0)"))
+            options["minwidth"       ] = options["maxwidth" ] 
+            options["minheight"      ] = options["maxheight"] 
+            options["padding"        ] = [0,0,0,0]
+            options["scrollbar"      ] = 0
+            options["drag"           ] = 1
+            options["borderchars"    ] = [' ']
+            options["borderhighlight"] = ["Lf_hl_Popup_BORDER"]
+            options["border"         ] = [0,0,0,1]
+            options["posinvert"      ] = 0
+            options["wrap"           ] = 0
+            options["fixed"          ] = 1
+            ####################################################
             lfCmd("noautocmd silent noswapfile let winid = popup_create(%d, %s)" % (buf_number, str(options)))
             self._popup_winid = int(lfEval("winid"))
             self._window_id = self._popup_winid
@@ -809,7 +831,13 @@ class LfInstance(object):
 
             if self._input_buffer_number == -1:
                 self._input_buffer_number = int(lfEval("bufadd('')"))
-
+            ####################################################
+            input_win_options["maxwidth"       ] = maxwidth-1
+            input_win_options["minwidth"       ] = input_win_options["maxwidth"]
+            input_win_options["border"         ] = [0,1,0,1]
+            input_win_options["borderchars"    ] = [' ']
+            input_win_options["borderhighlight"] = ["Lf_hl_previewTitle"]
+            ####################################################
             buf_number = self._input_buffer_number
             lfCmd("noautocmd silent let winid = popup_create(%d, %s)" % (buf_number, str(input_win_options)))
             winid = int(lfEval("winid"))
@@ -838,7 +866,10 @@ class LfInstance(object):
                     statusline_win_options["maxwidth"] -= 2
                     statusline_win_options["minwidth"] -= 2
                     statusline_win_options["borderhighlight"] = ["Lf_hl_popupBorder"]
-
+                ####################################################
+                statusline_win_options["maxwidth"]=maxwidth+2
+                statusline_win_options["minwidth"]=maxwidth+2
+                ####################################################
                 if self._stl_buffer_number == -1:
                     self._stl_buffer_number = int(lfEval("bufadd('')"))
 
@@ -1026,9 +1057,19 @@ class LfInstance(object):
         sep_len = lfBytesLen(sep)
         match_mode = lfEval("g:Lf_{}_StlMode".format(self._category))
         cwd = lfEval("g:Lf_{}_StlCwd".format(self._category))
-
-        text = " {} {} {} {} {} {} {} {}".format(current_mode, sep,
-                                                 self._category, sep,
+        ####################################################
+        if current_mode == 'NORMAL':
+            current_mode="正常"
+            lfCmd("call HideCs()")
+        else:
+            current_mode="输入"
+        MathModeDesc={"NameOnly":"名字","Fuzzy":"模糊","FullPath":"路径","Regex":"正则","Live":"耗电"}
+        #match_mode=MathModeDesc[match_mode]
+        match_mode  =""
+        current_mode=""
+        ####################################################
+        text = " {}{}{}{}{}{} | {}{}".format(current_mode, sep,
+                                                 self._category.replace("QuickFix","🐙"),sep, #修改
                                                  match_mode, sep,
                                                  cwd, sep
                                                  )
@@ -1248,6 +1289,10 @@ class LfInstance(object):
         self._after_enter()
 
     def exitBuffer(self):
+        ####################################################
+        lfCmd("call ShowCs(0)"  )
+        lfCmd("call SetBufStl()")
+        ####################################################
         self._before_exit()
 
         if self._win_pos == 'popup':

@@ -1340,13 +1340,15 @@ class RgExplManager(Manager):
             lfCmd("echohl Question")
             self._orig_buffer = self._getInstance().buffer[self._getInstance().helpLength:]
 
+            lfCmd("call ShowCs(0)")
             text = ("" if len(self._getExplorer().getPatternRegex()) == 0
                     else self._getExplorer().getPatternRegex()[0])
-            pattern = lfEval("input('Pattern: ', '%s')" % escQuote(text))
+            pattern = lfEval("input('•••••••••••••••••••••模式:', '%s')" % escQuote(text))
             if pattern == '':
                 return
-            string = lfEval("input('Replace with: ')")
-            flags = lfEval("input('flags: ', 'gc')")
+            Word = escQuote(text).replace("\\v\\C","").replace("\\v\\c","")
+            string = lfEval("input('•••••••••••••••••••••替换:','%s')" % Word)
+            flags = lfEval("input('•••••••••••••••••••••标记:', 'gc')")
             if "--heading" in self._arguments:
                 lfCmd(r"""%d;$s/\%%(^\d\+[:-].\{-}\)\@<=%s/%s/%s"""
                         % (self._getInstance().helpLength + 1, pattern.replace('/', r'\/'),

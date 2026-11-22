@@ -321,9 +321,15 @@ class FileExplorer(Explorer):
                 for i in wildignore.get("dir", []):
                     if lfEval("g:Lf_ShowHidden") != '0' or not i.startswith('.'): # rg does not show hidden files by default
                         ignore += ' -g "!%s"' % i
+                        ####################################################
+                        ignore += ' -g "!%s"' % i.lower()
+                        ####################################################
                 for i in wildignore.get("file", []):
                     if lfEval("g:Lf_ShowHidden") != '0' or not i.startswith('.'):
                         ignore += ' -g "!%s"' % i
+                        ####################################################
+                        ignore += ' -g "!%s"' % i.lower()
+                        ####################################################
             else:
                 color = "--color never"
                 ignore = ""

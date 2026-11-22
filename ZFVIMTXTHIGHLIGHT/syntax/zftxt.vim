@@ -136,6 +136,26 @@ syn match zftxtLink "\<[a-z0-9_\-]\+\(\.[a-z0-9_\-]\+\)\{2,}[a-z0-9~!@#\$%\^&\*\
 " [a-zA-Z0-9_\-\.]+@[a-zA-Z0-9_\-\.]+
 syn match zftxtLink "[a-zA-Z0-9_\-\.]\+@[a-zA-Z0-9_\-\.]\+"
 
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+syn match zftxtFunc "[a-zA-Z]"
+syn match WenZhang "《.*》"
+syn match BUG "BUG"
+highlight BUG  GUI=NONE  GUIBG=NONE GUIFG=#FF0000
+
+"highlight Normal  GUI=NONE GUIBG=#000000 GUIFG=#FFFFFF
+highlight NUM  GUI=NONE     GUIBG=NONE GUIFG=#50b7c1
+highlight NUM  GUI=NONE     GUIBG=NONE GUIFG=#0000FF
+highlight XGCY GUI=NONE     GUIBG=NONE GUIFG=#f15a22
+highlight Name GUI=BOLD     GUIBG=NONE GUIFG=#FF00FF
+highlight WenZhang GUI=BOLD GUIBG=NONE GUIFG=#FFFF00
+highlight GongZi GUI=BOLD GUIBG=NONE GUIFG=#7fb80e		
+
+syn match GongZi "信陵君"
+syn match NUM    "[0-9]"
+syn match Name   "灰色"
+syn match XGCY   "起死回生"
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
 syn case ignore
 syn keyword zftxtMark todo fixme note warning
 syn case match

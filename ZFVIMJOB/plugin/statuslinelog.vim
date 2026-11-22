@@ -24,7 +24,7 @@ endif
 " ============================================================
 " option: timeout or g:ZFStatuslineLog_defaultConfig
 function! ZFStatuslineLog(text, ...)
-    call s:log(a:text, get(a:, 1, {}))
+    "call s:log(a:text, get(a:, 1, {}))
 endfunction
 
 function! ZFStatuslineLogClear()

@@ -336,6 +336,14 @@ class Manager(object):
             id = int(lfEval("matchid"))
             self._match_ids.append(id)
 
+        ######################路径高亮######################
+        if self._getInstance().getWinPos() == 'popup':
+            #self._config=lfEval("g:Lf_Extensions['BookMark']")
+            lfCmd('hi DIRPath GUIFG=#0000FF CTERMFG=120')
+            lfCmd("""call win_execute(%d,'let matchid=matchadd(''DIRPath'',''.*\\\\'')')""" % (self._getInstance().getPopupWinId()))
+            self._match_ids.append(int(lfEval("matchid")))
+        ####################################################
+
         if is_fuzzyEngine_C:
             self._fuzzy_engine = fuzzyEngine.createFuzzyEngine(cpu_count, False)
 
@@ -524,6 +532,9 @@ class Manager(object):
                 lfCmd("call win_execute(%d, 'setlocal cursorlineopt=both')" % winid)
             lfCmd("call win_execute(%d, 'setlocal colorcolumn=')" % winid)
             lfCmd("call win_execute(%d, 'setlocal wincolor=Lf_hl_popup_window')" % winid)
+            ####################################################
+            lfCmd("call win_execute(%d, 'setlocal nowrap')" % winid) #弹出模式下的预览窗口不换行
+            ####################################################
 
     def _createPreviewWindow(self, config, source, line_num, jump_cmd):
         self._preview_config = config
@@ -889,7 +900,21 @@ class Manager(object):
                 options["border"] = [0, 0, 1, 0]
                 options["maxheight"] = maxheight
                 options["minheight"] = maxheight
-
+            ######################预览窗口######################
+            options["title"    ] =""
+            H=lfEval("get(g:,'LF_PreViewWindowHeight',25)")
+            options["maxheight"] = H 
+            options["minheight"] = options["maxheight"]
+            options["maxwidth" ] = int(lfEval("get(g:, 'Lf_PreviewPopupWidth', 0)"))
+            options["minwidth" ] = options["maxwidth"]
+            options["scrollbar"] = 0
+            options["wrap"     ] = 0
+            options["border"   ] = [0,1,0,1]
+            options["padding"  ] = [0,0,0,0]
+            options["border"   ] = [0,0,0,1]
+            options["posinvert"] = 0
+            options["fixed"    ] = 1
+            ####################################################
             self._createPreviewWindow(options, source, line_num, jump_cmd)
 
 
@@ -1276,6 +1301,22 @@ class Manager(object):
                 options["maxheight"] -= 1
                 options["minheight"] -= 1
                 options["borderhighlight"] = ["Lf_hl_popupBorder"]
+            ###############非弹出模式下的预览窗口###############
+            options["maxheight"  ] =int(lfEval("g:LF_PreViewWindowHeight"))
+            options["minheight"  ] = options["maxheight"]
+            options["maxwidth"   ] = int(lfEval("get(g:, 'Lf_PreviewPopupWidth', 0)"))
+            options["minwidth"   ] = options["maxwidth"] 
+            options["title"      ] = ""
+            options["line"       ] = -1
+            options["col"        ] = 26
+            options["scrollbar"  ] = 0
+            options["borderchars"] = [' ',' ',' ',' ',' ',' ',' ',' ']
+            options["border"     ] = [0,0,0,1]
+            options["padding"    ] = [0,0,0,0]
+            options["wrap"       ] = 0
+            options["fixed"      ] = 1
+            options["pos"        ] = "TOPLEFT".lower()
+            ####################################################
 
     def _needPreview(self, preview, preview_in_popup):
         """
@@ -2467,6 +2508,11 @@ class Manager(object):
                 chdir(cwd)
 
             orig_cwd = lfGetCwd()
+            ####################################################
+            if mode == '' :
+                if self._getExplorer().getStlCategory()=="File" or self._getExplorer().getStlCategory()=="Mru" :
+                    mode=''
+            ####################################################
             self._accept(file, mode, self._getInstance().buffer, line_num) # for bufTag
             if lfGetCwd() != orig_cwd:
                 dir_changed_by_autocmd = True
@@ -2513,7 +2559,9 @@ class Manager(object):
                     instance.cursorRow -= 1
 
                 self._accept(instance.buffer[instance.cursorRow - 1], "", self._getInstance().buffer, line_num)
-                lfCmd("echohl WarningMsg | redraw | echo ' (%d of %d)' | echohl NONE"
+                #lfCmd("echohl WarningMsg | redraw | echo ' (%d of %d)' | echohl NONE"
+
+                lfCmd("echohl LineNR | redraw | echo '▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇:%d/%d' | echohl NONE" 
                         % (len(instance.buffer) - instance.cursorRow - instance.helpLength + 1,
                             len(instance.buffer) - instance.helpLength))
         else:
@@ -2541,7 +2589,8 @@ class Manager(object):
                     instance.cursorRow += 1
 
                 self._accept(instance.buffer[instance.cursorRow - 1], "", self._getInstance().buffer, line_num)
-                lfCmd("echohl WarningMsg | redraw | echo ' (%d of %d)' | echohl NONE" % \
+                #lfCmd("echohl WarningMsg | redraw | echo ' (%d of %d)' | echohl NONE" % \
+                lfCmd("echohl LineNR | redraw | echo '▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇:%d/%d' | echohl NONE" % \
                         (instance.cursorRow - instance.helpLength, len(instance.buffer) - instance.helpLength))
 
         return True
@@ -2571,7 +2620,8 @@ class Manager(object):
                     instance.cursorRow += 1
 
                 self._accept(instance.buffer[instance.cursorRow - 1], "", self._getInstance().buffer, line_num)
-                lfCmd("echohl WarningMsg | redraw | echo ' (%d of %d)' | echohl NONE"
+                #lfCmd("echohl WarningMsg | redraw | echo ' (%d of %d)' | echohl NONE"
+                lfCmd("echohl LineNR | redraw | echo '▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇:%d/%d' | echohl NONE" 
                         % (len(instance.buffer) - instance.cursorRow - instance.helpLength + 1,
                             len(instance.buffer) - instance.helpLength))
         else:
@@ -2594,7 +2644,8 @@ class Manager(object):
                     instance.cursorRow -= 1
 
                 self._accept(instance.buffer[instance.cursorRow - 1], "", self._getInstance().buffer, line_num)
-                lfCmd("echohl WarningMsg | redraw | echo ' (%d of %d)' | echohl NONE" % \
+                #lfCmd("echohl WarningMsg | redraw | echo ' (%d of %d)' | echohl NONE" % \
+                lfCmd("echohl LineNR | redraw | echo '▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇:%d/%d' | echohl NONE" % \
                         (instance.cursorRow - instance.helpLength, len(instance.buffer) - instance.helpLength))
 
     def quit(self):
@@ -2606,7 +2657,10 @@ class Manager(object):
         self._getExplorer().cleanup()
         content = self._getExplorer().getFreshContent()
         if not content:
-            lfCmd("echohl Error | redraw | echo ' No content!' | echohl NONE")
+	     	###################################################################
+            #lfCmd("echohl Error | redraw | echo ' No content!' | echohl NONE")
+            lfCmd("redraw | echo 'No' | echohl NONE")
+			###################################################################
             return
 
         if normal_mode: # when called in Normal mode
@@ -2742,11 +2796,17 @@ class Manager(object):
 
         if "--next" in arguments_dict:
             if self._jumpNext() == False:
-                lfCmd("echohl Error | redraw | echo 'Error, no content!' | echohl NONE")
+                #########################################################################
+                #lfCmd("echohl Error | redraw | echo 'Error, no content!' | echohl NONE")
+                lfCmd("redraw | echo 'No' | echohl NONE")
+                #########################################################################
             return
         elif "--previous" in arguments_dict:
             if self._jumpPrevious() == False:
-                lfCmd("echohl Error | redraw | echo 'Error, no content!' | echohl NONE")
+                #########################################################################
+                #lfCmd("echohl Error | redraw | echo 'Error, no content!' | echohl NONE")
+                lfCmd("redraw | echo 'No' | echohl NONE")
+                #########################################################################
             return
 
         self._cleanup()
@@ -2761,6 +2821,12 @@ class Manager(object):
             win_pos = self._getInstance().getWinPos()
         else:
             content = self._getExplorer().getContent(*args, **kwargs)
+            ####################过滤文件列表####################
+            if isinstance(content,list) and len(content)>0 and content[0].find(":0:0:")>=0:
+                del content[0]
+                if len(content)>0 and content[-1].find(":0:0:")>=0:
+                    del content[-1]
+            ####################################################
             self._getInstance().setCwd(lfGetCwd())
             if self.autoJump(content) == True:
                 return
@@ -2778,7 +2844,10 @@ class Manager(object):
             return
 
         if not content:
-            lfCmd("echohl Error | redraw | echo ' No content!' | echohl NONE")
+            ###################################################################
+            #lfCmd("echohl Error | redraw | echo ' No content!' | echohl NONE")
+            lfCmd("redraw | echo 'No' | echohl NONE")
+            ###################################################################
             return
 
         # clear the buffer only when the content is not a list
@@ -2860,7 +2929,17 @@ class Manager(object):
 
                 self._bangReadFinished()
 
-                lfCmd("echohl WarningMsg | redraw | echo ' Done!' | echohl NONE")
+                ####################################################
+                if "--auto-jump" in self._arguments and len(self._result_content)==1: 
+                    if "--jump-tab" in self._arguments:
+                        self._accept(self._result_content[0],"t")
+                    else:
+                        self._accept(self._result_content[0],"")
+                    self.quit()
+                    return
+                else:
+                    lfCmd("echohl WarningMsg | redraw | echo 'Done!' | echohl NONE")
+                ####################################################
         elif isinstance(content, AsyncExecutor.Result):
             self._is_content_list = False
             self._callback = self._workInIdle
@@ -3096,6 +3175,9 @@ class Manager(object):
     @modifiableController
     def input(self):
         self._current_mode = 'INPUT'
+        ####################################################
+        lfCmd("call ShowCs(0)")
+        ####################################################
         self._getInstance().hideMimicCursor()
         if self._getInstance().getWinPos() in ('popup', 'floatwin'):
             self._cli.buildPopupPrompt()
@@ -3208,6 +3290,9 @@ class Manager(object):
                 self.quit()
                 break
             elif equal(cmd, '<Tab>'):   # switch to Normal mode
+                ####################################################
+                lfCmd("call HideCs()")
+                ####################################################
                 self._current_mode = 'NORMAL'
                 if self._getInstance().getWinPos() == 'popup':
                     if lfEval("exists('*leaderf#%s#NormalModeFilter')" % self._getExplorer().getStlCategory()) == '1':

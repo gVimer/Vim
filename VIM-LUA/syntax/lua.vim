@@ -29,7 +29,7 @@ endfunction
 
 " Clusters
 syntax cluster luaBase contains=luaComment,luaCommentLong,luaConstant,luaNumber,luaString,luaStringLong,luaBuiltIn
-syntax cluster luaExpr contains=@luaBase,luaTable,luaParen,luaBracket,luaSpecialTable,luaSpecialValue,luaOperator,luaSymbolOperator,luaEllipsis,luaComma,luaFunc,luaFuncCall,luaError
+syntax cluster luaExpr contains=@luaBase,LUAClassName,RedKeyWorld,SomeTable,luaTable,luaParen,luaBracket,luaSpecialTable,luaSpecialValue,luaOperator,luaSymbolOperator,luaEllipsis,luaComma,luaFunc,luaFuncCall,luaError
 syntax cluster luaStat
       \ contains=@luaExpr,luaIfThen,luaBlock,luaLoop,luaGoto,luaLabel,luaLocal,luaStatement,luaSemiCol,luaErrHand
 
@@ -118,7 +118,7 @@ syntax match luaLabel "::\k\+::"
 
 " Other Keywords
 syntax keyword luaConstant nil true false
-syntax keyword luaBuiltIn _ENV self
+syntax keyword luaBuiltIn _ENV self this
 syntax keyword luaLocal local
 syntax keyword luaOperator and or not
 syntax keyword luaStatement break return
@@ -254,7 +254,30 @@ if version >= 508 || !exists("did_lua_syn_inits")
 
   delcommand HiLink
 end
-
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+syntax match luaSpecialTable "\v\.(\a*)[\.:,]"
+syntax keyword LuaClassName 
+  \ ComObj 
+  \ TabOBJ
+  \ SLDefine
+  \ ssrObjCfg
+  \ RoleData
+  \ BagData 
+  \ ItemData
+  \ ssrConstCfg
+  \ ssrEventCfg
+  \ ssrUIManager
+syntax keyword RedKeyWorld    
+  \ cc 
+  \ ccui 
+  \ Game 
+syntax keyword SomeTable
+  \ GUI 
+  \ SL 
+  \ ProtocolPool 
+  \ ssrMessage 
+  \ GUIFunction
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 let b:current_syntax = "lua"
 if main_syntax == 'lua'
   unlet main_syntax

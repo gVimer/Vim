@@ -598,14 +598,18 @@ function! s:AsyncRun_Job_OnFinish()
 	let l:last = l:current - s:async_start
 	let l:check = s:AsyncRun_Job_CheckScroll()
 	if s:async_code == 0
-		let l:text = "[Finished in ".l:last." seconds]"
+		""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+		let l:text = "[FINISHED IN ".l:last." SECONDS]"
+		""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 		if !s:async_info.strip
 			call s:AppendText([l:text], 1)
 		endif
 		let g:asyncrun_status = "success"
 	else
-		let l:text = 'with code '.s:async_code
-		let l:text = "[Finished in ".l:last." seconds ".l:text."]"
+		""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+		let l:text = 'WITH CODE '.s:async_code
+		let l:text = "[FINISHED IN ".l:last." SECONDS ".l:text."]"
+		""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 		if !s:async_info.strip
 			call s:AppendText([l:text], 1)
 		endif
@@ -904,6 +908,7 @@ function! s:AsyncRun_Job_Start(cmd)
 			let s:async_info.qfid = getqflist({'id':0}).id
 		endif
 		if !s:async_info.strip
+			"打印命令本身"
 			call s:AppendText([l:arguments], 1)
 		endif
 		let l:name = 'g:AsyncRun_Job_OnTimer'
@@ -913,7 +918,9 @@ function! s:AsyncRun_Job_Start(cmd)
 		redrawstatus!
 	else
 		unlet s:async_job
-		call s:ErrorMsg("Background job start failed '".a:cmd."'")
+		""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+		call s:ErrorMsg("BACKGROUND JOB START FAILED '".a:cmd."'")
+		""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 		redrawstatus!
 		return -5
 	endif

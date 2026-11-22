@@ -140,4 +140,7 @@ if __name__ == "__main__":
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer,encoding='utf8')
     argv = sys.argv
     info = get_word_info(str_decode("".join(argv[1:])))
-    sys.stdout.write(info)
+    info=info.replace('\n','').replace('\r','')
+    if len(info)>100:
+        info=info[0:100]+"..."
+    sys.stdout.write(info.title())

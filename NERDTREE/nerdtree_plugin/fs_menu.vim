@@ -18,10 +18,11 @@ let g:loaded_nerdtree_fs_menu = 1
 if !exists('g:NERDTreeAutoDeleteBuffer')
     let g:NERDTreeAutoDeleteBuffer = 0
 endif
-
-call NERDTreeAddMenuItem({'text': '(a)dd a childnode', 'shortcut': 'a', 'callback': 'NERDTreeAddNode'})
-call NERDTreeAddMenuItem({'text': '(m)ove the current node', 'shortcut': 'm', 'callback': 'NERDTreeMoveNode'})
-call NERDTreeAddMenuItem({'text': '(d)elete the current node', 'shortcut': 'd', 'callback': 'NERDTreeDeleteNode'})
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+call NERDTreeAddMenuItem({'text': '(A)添加', 'shortcut': 'a', 'callback': 'NERDTreeAddNode'})
+call NERDTreeAddMenuItem({'text': '(M)移动', 'shortcut': 'm', 'callback': 'NERDTreeMoveNode'})
+call NERDTreeAddMenuItem({'text': '(D)删除', 'shortcut': 'd', 'callback': 'NERDTreeDeleteNode'})
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 if nerdtree#runningMac()
     call NERDTreeAddMenuItem({'text': '(r)eveal the current node in the Finder', 'shortcut': 'r', 'callback': 'NERDTreeRevealInFinder'})
@@ -40,7 +41,9 @@ if nerdtree#runningWindows()
 endif
 
 if g:NERDTreePath.CopyingSupported()
-    call NERDTreeAddMenuItem({'text': '(c)opy the current node', 'shortcut': 'c', 'callback': 'NERDTreeCopyNode'})
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+    call NERDTreeAddMenuItem({'text': '(C)复制', 'shortcut': 'c', 'callback': 'NERDTreeCopyNode'})
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 endif
 call NERDTreeAddMenuItem({'text': (has('clipboard')?'copy (p)ath to clipboard':'print (p)ath to screen'), 'shortcut': 'p', 'callback': 'NERDTreeCopyPath'})
 

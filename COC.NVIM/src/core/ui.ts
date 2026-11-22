@@ -142,7 +142,12 @@ export function echoMessages(nvim: Neovim, msg: string, messageType: MsgTypes, m
   }
   if (level >= toMessageLevel(messageLevel)) {
     let method = isVim ? 'callTimer' : 'call'
-    nvim[method]('coc#ui#echo_messages', [hl, ('[coc.nvim] ' + msg).split('\n')], true)
+////////////////////////////////////////////////////////////   
+    if(msg=="definition not found") {
+      msg = "未定义"
+    }
+    nvim[method]('coc#ui#echo_messages', [hl, ('[Coc.nVim] ' + msg).split('\n')], true)
+////////////////////////////////////////////////////////////
   }
 }
 
